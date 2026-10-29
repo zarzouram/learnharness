@@ -37,6 +37,43 @@ describe("proposition candidate retrieval", () => {
 		assert.equal(search(proposition("p", "alpha ΑΒΓ"))[0]!.node.id, "n");
 	});
 
+	it("folds Arabic marks and letter forms, and a marked word stays one word", () => {
+		const search = createPropositionCandidateSearch([
+			node("ar", "أَحْمَد", "كَتَبَ الدَّرْسَ عَلَى السَّبُّورَةِ"),
+			// The letters of كتب as separate words: a split marked word would match them.
+			node("letters", "Letters", "ك ت ب"),
+		]);
+		for (const query of ["احمد", "كتب", "كَتَبَ", "الدرس", "علي", "السبورة"]) {
+			assert.deepEqual(search(proposition("p", query)).map((hit) => hit.node.id), ["ar"], query);
+		}
+	});
+
+	it("keeps a mark that belongs to its letter inside the word", () => {
+		// पानी is प, the vowel sign ा, न and the vowel sign ी. Split at the signs,
+		// it would leave the letters प and न and match the node that lists them.
+		const search = createPropositionCandidateSearch([
+			node("water", "पानी", "Water"),
+			node("letters", "प न", "Letters"),
+			node("other", "पन", "Suffix"),
+		]);
+		assert.deepEqual(search(proposition("p", "पानी")).map((hit) => hit.node.id), ["water"]);
+	});
+
+	it("folds accents, niqqud and compatibility forms on both sides", () => {
+		const search = createPropositionCandidateSearch([
+			node("folded", "Café", "שָׁלוֹם", ["ﬃ"]),
+			node("other", "Other", "Plain"),
+		]);
+		for (const query of ["cafe", "CAFÉ", "שלום", "שָׁלוֹם", "ffi", "ﬃ"]) {
+			assert.deepEqual(search(proposition("p", query)).map((hit) => hit.node.id), ["folded"], query);
+		}
+	});
+
+	it("finds nothing for a query that folds to nothing", () => {
+		const search = createPropositionCandidateSearch([node("n", "مشتقة", "Rate of change")]);
+		for (const query of ["ّ", "ـ", "​"]) assert.deepEqual(search(proposition("p", query)), [], JSON.stringify(query));
+	});
+
 	it("shows a relevant alias with the complete canonical statement", () => {
 		const nodes = [node("n", "Legacy label", "The original assertion remains canonical.", ["An amber canoe travels upstream."])];
 		const proposed = [proposition("p", "An amber canoe travels upstream.")];

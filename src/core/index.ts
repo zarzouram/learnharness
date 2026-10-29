@@ -69,6 +69,7 @@ export { CLAUDE_CODE_PROVIDER, CLAUDE_CODE_MINIMUM_VERSION, type ClaudeCodeStatu
 export * from "./fuzzy.ts";
 export { BREAK_TEXT, LITERAL_TEXT, contentDirection, hasRtlLetter, isolateLtrRuns, letterDirection, ltrPhrases, ltrRuns } from "./bidi.ts";
 export type { BidiSegment, ContentDirection, ContentFormat, InlinePart, PartSlice, Phrase } from "./bidi.ts";
+export * from "./text-search.ts";
 // settings.ts + settings-resolution.ts (settings-storage wave, 2026-09-19):
 // the user-settings record's shape/sanitizer (pure) and its fully-resolved
 // view. Browser-safe — the Wave-4 panel imports these directly.

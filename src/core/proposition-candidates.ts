@@ -1,4 +1,5 @@
 import type { GraphNode } from "./contracts/graph.ts";
+import { normalizeForSearch } from "./text-search.ts";
 
 /** Retrieval only: scores rank lexical candidates, never decide identity. */
 export interface CandidateProposition {
@@ -44,8 +45,12 @@ const STOP_WORDS = new Set((
 	"such than then when where each every any all also into through"
 ).split(" "));
 
+/** Words after search folding (text-search.ts), so "كَتَبَ" meets "كتب" and
+ * "Café" meets "cafe". A mark the fold keeps is part of its letter (an Indic
+ * vowel sign, kana voicing), so it stays inside the word: पानी is one word,
+ * not the letters प and न. */
 function words(text: string): string[] {
-	return (text.normalize("NFKC").toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [])
+	return (normalizeForSearch(text).match(/[\p{L}\p{M}\p{N}]+/gu) ?? [])
 		.filter((word) => !STOP_WORDS.has(word));
 }
 

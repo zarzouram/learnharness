@@ -72,7 +72,7 @@ import { PluginGraphActions } from "@/components/plugin-chrome";
 import { SettingsSlider as SettingSlider } from "@/components/settings/controls";
 import Link from "next/link";
 import { FileTextIcon, ListTreeIcon, Loader2Icon, SearchIcon, SettingsIcon, WaypointsIcon } from "lucide-react";
-import { graphFolderIds, graphFolderVisibleIds, incrementalLayout, propositionSessionHref, type GraphCostSummary, type GraphNode, type GraphSnapshot } from "@/src/core";
+import { graphFolderIds, graphFolderVisibleIds, incrementalLayout, normalizeForSearch, propositionSessionHref, type GraphCostSummary, type GraphNode, type GraphSnapshot } from "@/src/core";
 import { planCostLabel } from "@/components/usage-format";
 import { CLUSTER_LIGHTNESS, GraphCanvasRenderer, type GraphRenderSettings } from "./graph-canvas.ts";
 import { useAppearance } from "@/components/settings/appearance";
@@ -136,13 +136,13 @@ type RenderSettings = GraphRenderSettings;
 
 /**
  * Pure filter predicate for the search panel: a node is visible when the
- * query is empty or matches its name or statement (case-insensitive).
+ * query is empty or matches its name or statement after Unicode folding.
  * Exported for tests; the visibility feed just consumes its verdict.
  */
 export function isNodeVisible(node: Pick<GraphNode, "name" | "statement">, query: string): boolean {
-	const q = query.trim().toLowerCase();
+	const q = normalizeForSearch(query.trim());
 	if (!q) return true;
-	return node.name.toLowerCase().includes(q) || node.statement.toLowerCase().includes(q);
+	return normalizeForSearch(node.name).includes(q) || normalizeForSearch(node.statement).includes(q);
 }
 
 /** Search alone retains its existing behavior. With an active folder filter,
