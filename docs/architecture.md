@@ -242,7 +242,14 @@ Fields set `dir` from their value:
 - Other fields, such as titles, names, comments and prompt overrides, use the plain rule, since their value shows as plain text.
 - Literal search boxes use `letterDirection`.
 
-New UI that shows learner or model text uses Markdown, `BidiText`, `showText` or a field `dir`, never a bare string. The **direction audit** ([`direction-audit.ts`](../tests/helpers/direction-audit.ts)) checks a mounted surface whose content is Arabic:
+Graph and plan labels are drawn without markup, so there is no span to isolate a run. They carry isolate characters instead:
+
+- Graph node and region labels ([`graph-canvas.ts`](../components/graph-canvas.ts)) set the canvas `direction` from `letterDirection` of the whole label before they measure, wrap and draw it.
+- Plan titles ([`plan-block.tsx`](../components/plan-block.tsx)) put `direction="rtl"` on each `<text>` line of a right-to-left title. Other titles inherit.
+- `isolateLabel(line, label)` in [`bidi.ts`](../src/core/bidi.ts) wraps each left-to-right run of a line in U+2066 and U+2069 (an isolate pair) when the whole label is right-to-left. So the line `C++` cut from `تعلم C++` still draws as `C++`, not `++C`. The isolates have no width.
+- Wrapping breaks at spaces and splits a long word only between graphemes, so a mark (tashkeel) stays on its letter. Plan boxes take their size from the titles laid out in the real font, so a right-to-left title needs no width rule of its own.
+
+New UI that shows learner or model text uses Markdown, `BidiText`, `showText`, a field `dir`, or `isolateLabel` where it draws without markup, never a bare string. The **direction audit** ([`direction-audit.ts`](../tests/helpers/direction-audit.ts)) checks a mounted surface whose content is Arabic:
 
 - Right-to-left text resolves to `rtl` through its nearest `dir`.
 - A field that holds right-to-left text states `dir="rtl"`.
