@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CITATION_MAX_COMMENT_LENGTH } from "@/src/core";
+import { CITATION_MAX_COMMENT_LENGTH, contentDirection } from "@/src/core";
 import { Button } from "./ui/button";
 import { useOptionalInteractionLayers } from "./interaction-layers";
 import { isInteractionScopeEligible } from "./plugin-input-focus";
@@ -52,6 +52,7 @@ export function CitationCommentEditor({ initial, onDraftChange, onSave, onCancel
 			<textarea
 				ref={areaRef}
 				value={draft}
+				dir={contentDirection(draft)}
 				rows={2}
 				aria-label="Comment on selected text"
 				aria-description="Enter to save the citation comment; Command/Ctrl+Enter to save and send; Shift+Enter for a new line."

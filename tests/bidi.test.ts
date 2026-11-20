@@ -3,11 +3,18 @@
  * letter-only direction of already-parsed text, exact LTR run boundaries (a run
  * continues over anything but a strong right-to-left character or a line break
  * and is trimmed at its two ends: balanced brackets and quotes, glued signs,
- * sentence punctuation, URLs, combining marks, lossless segmentation) and
- * phrases across inline markup. */
+ * sentence punctuation, URLs, combining marks, lossless segmentation), phrases
+ * across inline markup, the lines plain text shows (`directedLines`), and that
+ * `showText` writes exactly the markup `BidiText` renders. */
+import React, { createElement } from "react";
+(globalThis as Record<string, unknown>).React = React;
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { BREAK_TEXT, LITERAL_TEXT, contentDirection, hasRtlLetter, letterDirection, ltrPhrases, ltrRuns } from "../src/core/bidi.ts";
+import { renderToStaticMarkup } from "react-dom/server";
+import { parseHTML } from "linkedom";
+import { BidiText } from "../components/bidi-text.tsx";
+import { showText } from "../components/directed-text.ts";
+import { BREAK_TEXT, LITERAL_TEXT, contentDirection, directedLines, hasRtlLetter, letterDirection, ltrPhrases, ltrRuns } from "../src/core/bidi.ts";
 import type { BidiSegment, InlinePart, Phrase } from "../src/core/bidi.ts";
 
 /** The direction of raw Markdown source, as a composer holds it. */
@@ -337,5 +344,88 @@ describe("ltrPhrases: runs across inline markup", () => {
 
 	it("no parts, no phrases", () => {
 		assert.deepEqual(ltrPhrases([]), []);
+	});
+});
+
+describe("directedLines: plain text as a surface shows it", () => {
+	/** A piece of a line that is not isolated. */
+	const piece = (text: string): BidiSegment => ({ text, ltr: false });
+
+	it("one line takes its direction from its letters and isolates runs only when right-to-left", () => {
+		assert.deepEqual(directedLines("Newton's law ينص"), [{ dir: "rtl", runs: [ltr("Newton's law"), piece(" ينص")] }]);
+		assert.deepEqual(directedLines("Newton's law."), [{ dir: "ltr", runs: [piece("Newton's law.")] }]);
+		assert.deepEqual(directedLines("- ..."), [{ dir: undefined, runs: [piece("- ...")] }]);
+		assert.deepEqual(directedLines(""), [{ dir: undefined, runs: [] }]);
+	});
+
+	it("one line follows the case table: the plain rule, and the table's runs when right-to-left", () => {
+		// Single spaces only: one line collapses any other whitespace.
+		for (const { name, text, runs } of cases.filter((entry) => !/\s\s|[^\S ]/.test(entry.text))) {
+			const [line, ...rest] = directedLines(text);
+			assert.equal(rest.length, 0, name);
+			assert.equal(line!.dir, contentDirection(text), name);
+			assert.deepEqual(line!.runs, line!.dir === "rtl" ? runs : text ? [piece(text)] : [], name);
+		}
+	});
+
+	it("one line collapses whitespace, and reads text literally: a dollar or a backtick is a character", () => {
+		assert.deepEqual(directedLines("one\n  two"), [{ dir: "ltr", runs: [piece("one two")] }]);
+		assert.equal(directedLines("`عربي` code")[0]!.dir, "rtl");
+		assert.equal(directedLines("https://ar.wikipedia.org/wiki/فيزياء")[0]!.dir, "ltr");
+	});
+
+	it("multiline gives one line per break, each with its own direction, keeping every character as typed", () => {
+		const text = "مرحبا Newton\n\nEnglish line\r\n  edge  \n";
+		const lines = directedLines(text, { multiline: true });
+		assert.deepEqual(lines.map((line) => line.dir), ["rtl", undefined, "ltr", "ltr"]);
+		assert.deepEqual(lines[0]!.runs, [piece("مرحبا "), ltr("Newton"), piece("\n")]);
+		assert.equal(lines.flatMap((line) => line.runs.map((run) => run.text)).join(""), text);
+		assert.deepEqual(directedLines("a  b", { multiline: true }), [{ dir: "ltr", runs: [piece("a  b")] }], "no break: one line, not collapsed");
+	});
+});
+
+describe("showText writes the markup BidiText renders", () => {
+	const { document } = parseHTML("<html><body></body></html>");
+	/** A tree as text: tags, attributes in name order (their order means
+	 *  nothing, and linkedom reverses the order they were set in), and text. */
+	const canonical = (node: Node): string => {
+		if (node.nodeType === node.TEXT_NODE) return node.textContent!.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+		const element = node as Element;
+		const attributes = [...element.attributes].map(({ name, value }) => ` ${name}="${value}"`).sort().join("");
+		return `<${element.localName}${attributes}>${[...element.childNodes].map(canonical).join("")}</${element.localName}>`;
+	};
+	const parsed = (markup: string) => {
+		const host = document.createElement("div");
+		host.innerHTML = markup;
+		return host.firstChild as unknown as Node;
+	};
+	const texts = [
+		...cases.map((entry) => entry.text),
+		"مرحبا Newton\n\nEnglish line\n",
+		"line one\r\nسطر ثان\n\n\n",
+		"\n",
+		"  edge spaces  \n  ومسافات  ",
+	];
+
+	for (const multiline of [false, true]) {
+		it(multiline ? "multiline: one block per line" : "one line", () => {
+			for (const text of texts) {
+				const element = document.createElement("span");
+				// Whatever the element showed before is replaced.
+				element.setAttribute("dir", "rtl");
+				element.append("stale", document.createElement("b"));
+				showText(element as unknown as HTMLElement, text, { multiline });
+				const rendered = parsed(renderToStaticMarkup(createElement(BidiText, { text, multiline })));
+				assert.equal(canonical(element as unknown as Node), canonical(rendered), JSON.stringify(text));
+			}
+		});
+	}
+
+	it("adds no characters: the element's text is the text as shown", () => {
+		const element = document.createElement("span");
+		showText(element as unknown as HTMLElement, "تعلم C++ و Python\nسطر", { multiline: true });
+		assert.equal(element.textContent, "تعلم C++ و Python\nسطر");
+		showText(element as unknown as HTMLElement, "تعلم  C++\nو Python");
+		assert.equal(element.textContent, "تعلم C++ و Python");
 	});
 });

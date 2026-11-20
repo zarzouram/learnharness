@@ -197,6 +197,28 @@ export function ltrRuns(text: string): BidiSegment[] {
 	return segments;
 }
 
+/** One line of plain text as a surface shows it. */
+export interface DirectedLine {
+	/** The line's own direction (`contentDirection`); `undefined` inherits. */
+	dir: ContentDirection | undefined;
+	/** The line's text in order. `ltr` marks a run to isolate, and only a
+	 * right-to-left line has any: an English line is one piece. */
+	runs: BidiSegment[];
+}
+
+/** Plain text as `BidiText` and `showText` show it. By default it is one line,
+ * its whitespace collapsed to single spaces, as a title or an activity row
+ * shows it. With `multiline` each line is an entry of its own, with its own
+ * direction, and keeps its line break at its end, so the text stays exactly as
+ * typed; a surface shows them as one block per line when the text has a break. */
+export function directedLines(text: string, options: { multiline?: boolean } = {}): DirectedLine[] {
+	const lines = options.multiline ? text.split(/(?<=\n)/) : [text.replace(/\s+/g, " ")];
+	return lines.map((line) => {
+		const dir = contentDirection(line);
+		return { dir, runs: dir === "rtl" ? ltrRuns(line) : line === "" ? [] : [{ text: line, ltr: false }] };
+	});
+}
+
 /** The text with each left-to-right run wrapped in an isolate (U+2066 LRI … U+2069
  * PDI), for text drawn without markup (a canvas label, an SVG title): `تعلم C++`
  * then draws `C++` the way the chat shows it, not `++C`. The isolates have no width. */

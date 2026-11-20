@@ -53,6 +53,17 @@ it("dragging the name moves the item with an icon/name-only preview, not the who
 	assert.equal(document.querySelector('[data-testid="source-name-input"]'), null, "a drag does not enter rename mode");
 });
 
+it("the drag preview shows a right-to-left name in its own direction, its English run isolated", async () => {
+	directory.sources.push({ id: "c", kind: "notes", label: "كتاب Newton", createdAt: "2026-10-30" });
+	try {
+		await mount(); const data = transfer();
+		await fire('[data-source-drag-row="c"] button[title="Rename"]', "dragstart", data);
+		const label = data.preview!.querySelector(".truncate")!;
+		assert.equal(label.getAttribute("dir"), "rtl"); assert.equal(label.textContent, "كتاب Newton");
+		assert.deepEqual([...label.querySelectorAll('span[dir="ltr"]')].map((run) => run.textContent), ["Newton"]);
+	} finally { directory.sources.pop(); }
+});
+
 it("folder contents, including expanded propositions, drop into their containing folder with stable background feedback", async () => {
 	await mount(); const data = transfer();
 	await fire('[data-source-drag-row="b"]', "dragstart", data);

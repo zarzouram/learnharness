@@ -4,6 +4,7 @@ import { DownloadIcon, MaximizeIcon } from "lucide-react";
 import { useSessionMermaid } from "@/components/session-overlay";
 import { downloadFile } from "@/components/artifacts/download";
 import { ToolCallCard } from "@/components/artifacts/tool-call-card";
+import { BidiText } from "@/components/bidi-text";
 import type { ArtifactPartProps, ImageSnapshot, ShowImageDetails } from "@/src/core";
 import { useImageSnapshot } from "./use-image-snapshot";
 
@@ -93,9 +94,7 @@ export function ImagePresentation({ image }: { image: ImageSnapshot & Pick<ShowI
 				<div className="flex min-w-0 items-baseline gap-2">
 					<span className="shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">Image</span>
 					{image.caption && (
-						<span className="text-sm text-muted-foreground" data-testid="image-caption">
-							{image.caption}
-						</span>
+						<BidiText className="text-sm text-muted-foreground" data-testid="image-caption" text={image.caption} />
 					)}
 				</div>
 				<div className="flex shrink-0 items-center gap-1.5">

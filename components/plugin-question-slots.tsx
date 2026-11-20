@@ -5,6 +5,7 @@ import { freezePluginQuestionValue, clonePluginQuestionJson, type PluginQuestion
 import type { PluginCleanup } from "@/src/core";
 import type { QuestionRendererRegistration } from "./plugin-manager";
 import { ToolContentResponse } from "./ai-elements/message";
+import { BidiText } from "./bidi-text";
 import { ThinkingBlock } from "./thinking-block";
 
 export function questionMountContext(snapshot: PluginQuestionSnapshot, chatId: string, signal: AbortSignal): PluginQuestionMountContext {
@@ -60,7 +61,9 @@ export function PluginQuestionPresentation({ snapshot, chatId, registration, ans
 		    generation can mount immediately; each mount still owns its child. */}
 		<div ref={root} hidden={fallback} />
 		{fallback && (answer
-			? <div className="whitespace-pre-wrap text-sm">{typeof answer.answer === "string" ? answer.answer : JSON.stringify(answer.answer, null, 2)}</div>
+			? typeof answer.answer === "string"
+				? <BidiText as="div" multiline className="whitespace-pre-wrap text-sm" text={answer.answer} />
+				: <div className="whitespace-pre-wrap text-sm">{JSON.stringify(answer.answer, null, 2)}</div>
 			: <ToolContentResponse>{snapshot.input.question}</ToolContentResponse>)}
 	</>;
 }

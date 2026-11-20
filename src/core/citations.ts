@@ -121,10 +121,20 @@ export function withCitationComment(c: TutorCitation, comment: string | undefine
 	return trimmed ? { ...rest, comment: trimmed } : rest;
 }
 
-/** Chip label: the comment when there is one, else the quote; 64 characters. */
+const LABEL_GRAPHEMES = 64;
+const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+/** Chip label: the comment when there is one, else the quote; 64 characters,
+ *  counted as a reader sees them, so a cut never parts a letter from its marks. */
 export function citationLabel(c: TutorCitation): string {
 	const preview = (c.comment?.trim() || c.text).replace(/\s+/g, " ").trim();
-	return preview.length > 64 ? `${preview.slice(0, 64)}…` : preview;
+	// A string of at most 64 code units has at most 64 graphemes.
+	if (preview.length <= LABEL_GRAPHEMES) return preview;
+	let count = 0;
+	for (const { index } of GRAPHEMES.segment(preview)) {
+		if (count++ === LABEL_GRAPHEMES) return `${preview.slice(0, index)}…`;
+	}
+	return preview;
 }
 
 export function collectCitations(text: string): CitationOccurrence[] {

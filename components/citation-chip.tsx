@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Pencil, Quote } from "lucide-react";
+import { BidiText } from "./bidi-text";
 import { MenuShell } from "./menu-shell";
 import { citationLabel, type TutorCitation } from "@/src/core";
 import { useOptionalInteractionLayers } from "./interaction-layers";
@@ -31,8 +32,8 @@ export interface CitationChipProps {
 export function CitationQuoteCard({ citation, onOpenSource }: { citation: TutorCitation; onOpenSource: () => void }) {
 	return (
 		<div className="flex flex-col gap-2">
-			<blockquote className="max-h-64 overflow-y-auto whitespace-pre-wrap border-l-2 border-muted-foreground/30 pl-2 text-sm">{citation.text}</blockquote>
-			{citation.comment ? <p className="whitespace-pre-wrap text-sm">{citation.comment}</p> : null}
+			<BidiText as="blockquote" multiline className="max-h-64 overflow-y-auto whitespace-pre-wrap border-s-2 border-muted-foreground/30 ps-2 text-sm" text={citation.text} />
+			{citation.comment ? <BidiText as="p" multiline className="whitespace-pre-wrap text-sm" text={citation.comment} /> : null}
 			<button type="button" className="inline-flex items-center gap-1 self-start text-xs font-medium text-muted-foreground hover:text-foreground" onClick={onOpenSource}>
 				<ArrowUpRight aria-hidden="true" className="size-3.5" />Go to source
 			</button>
@@ -62,6 +63,7 @@ export function CitationChip({ citation, variant, contentEditable, source }: Cit
 	return (
 		<span
 			data-testid="citation-chip"
+			dir="ltr"
 			contentEditable={contentEditable}
 			className="inline-flex max-w-[16em] items-center gap-1 rounded border bg-muted/50 px-1.5 py-0.5 align-middle text-sm"
 		>
@@ -71,12 +73,12 @@ export function CitationChip({ citation, variant, contentEditable, source }: Cit
 				aria-label={variant === "composer" ? `View cited tutor text: ${label}` : `Quoted tutor text: ${label}`}
 				aria-expanded={variant === "transcript" ? cardOpen : undefined}
 				title={citation.text}
-				className="inline-flex min-w-0 items-center gap-1 text-left"
+				className="inline-flex min-w-0 items-center gap-1 text-start"
 				onPointerDown={(event) => event.preventDefault()}
 				onClick={(event) => { if (variant === "composer") openSource(event.currentTarget); else setCardOpen((open) => !open); }}
 			>
 				<Quote aria-hidden="true" className="size-3.5 shrink-0" />
-				<span className="min-w-0 truncate">{label}</span>
+				<BidiText className="min-w-0 truncate" text={label} />
 			</button>
 			{variant === "composer" ? (
 				<button

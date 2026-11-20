@@ -47,6 +47,12 @@ describe("citation codec", () => {
 		assert.equal(citationLabel({ ...base, comment: "my  note" }), "my note");
 		assert.equal(citationLabel({ ...base, text: "a ".repeat(50) }), `${"a ".repeat(32)}…`);
 	});
+	it("counts the 64 as a reader sees characters: a letter keeps its marks and an emoji stays whole", () => {
+		// Each "مُ" is a letter and its mark, two code units; each emoji is a surrogate pair.
+		assert.equal(citationLabel({ ...base, text: "مُ".repeat(40) }), "مُ".repeat(40));
+		assert.equal(citationLabel({ ...base, text: "مُ".repeat(70) }), `${"مُ".repeat(64)}…`);
+		assert.equal(citationLabel({ ...base, text: `a${"😀".repeat(70)}` }), `a${"😀".repeat(63)}…`);
+	});
 	it("collects only canonical links and leaves ordinary text alone", () => {
 		const link = serializeCitation(base);
 		const text = `see ${link}, and [Other](lh-citation://v1/a/b?text=x) and lh-citation://v1/a/b`;

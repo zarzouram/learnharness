@@ -504,7 +504,7 @@ describe("image cards", () => {
 		assert.match(html, /alt="Your breadboard"/);
 		assert.match(html, /width="40" height="30"/);
 		assert.match(html, />Image</);
-		assert.match(html, /data-testid="image-caption">Your breadboard</);
+		assert.match(html, /data-testid="image-caption" dir="ltr">Your breadboard</);
 		assert.match(html, /data-testid="image-download"/);
 		assert.ok(!html.includes("invert"), "no invert switch");
 		assert.ok(!html.includes('data-testid="image-open"'), "fullscreen needs the session overlay context");

@@ -3,9 +3,11 @@
 import { createContext, useContext, useLayoutEffect, useRef, useState, type DragEvent, type HTMLAttributes, type ReactNode } from "react";
 import { FolderIcon, FolderOpenIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { canMoveFolder, folderIsEmpty, fuzzyScore, placementOf, folderEntryCheck, type SourceEntrySelection, type OrganizationAction, type SourceDirectory } from "@/src/core";
+import { canMoveFolder, contentDirection, folderIsEmpty, fuzzyScore, placementOf, folderEntryCheck, type SourceEntrySelection, type OrganizationAction, type SourceDirectory } from "@/src/core";
 import type { ChainSort } from "./chain-table";
+import { BidiText } from "./bidi-text";
 import { chainRow } from "./chain-navigation";
+import { showText } from "./directed-text";
 import { TreeCell, TreeCheckbox, TreeDisclosure, TreeGuide, TreeSeparator, treeBranchLayout, treeRowLayout } from "./tree-presentation";
 
 export type OrganizationChange = (action: OrganizationAction) => Promise<string | void>;
@@ -34,7 +36,7 @@ export function SourceDragRow({ kind, id, name, enabled, children, ...props }: H
 				const icon = event.currentTarget.querySelector("[data-source-icon] svg")?.cloneNode(true);
 				if (icon) preview.appendChild(icon);
 				const label = preview.ownerDocument.createElement("span");
-				label.className = "truncate"; label.textContent = name; preview.appendChild(label);
+				label.className = "truncate"; showText(label, name); preview.appendChild(label);
 				preview.ownerDocument.body.appendChild(preview);
 				event.dataTransfer.setDragImage(preview, 12, 12);
 				requestAnimationFrame(() => preview.remove());
@@ -84,15 +86,15 @@ export function EditableSourceName({ name, onSave, onCancel, initiallyEditing = 
 		finally { submitting.current = false; }
 	};
 	return <span className="min-w-0 flex-1">
-		{editing ? <input ref={input} value={draft} placeholder="Folder name" aria-label="Source or folder name" data-testid="source-name-input"
+		{editing ? <input ref={input} value={draft} dir={contentDirection(draft)} placeholder="Folder name" aria-label="Source or folder name" data-testid="source-name-input"
 			className={cn("block w-full min-w-0 border-0 bg-transparent p-0 font-medium outline-none shadow-none focus:ring-0", inputClassName ?? "h-5 text-sm leading-5")}
 			onChange={(e) => setDraft(e.target.value)} onBlur={() => { void commit(); }}
 			onKeyDown={(e) => {
 				if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancelled.current = true; setEditing(false); setFailure(""); onCancel?.(); }
 				if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); void commit(); }
 			}} onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }} />
-			: <button type="button" className={`block max-w-full truncate rounded-sm text-left text-sm font-medium leading-5 transition-colors hover:bg-accent${muted ? " text-muted-foreground/60" : ""}`} title="Rename"
-				onClick={() => { cancelled.current = false; setDraft(name); setEditing(true); }}>{name}</button>}
+			: <BidiText as="button" type="button" className={`block max-w-full truncate rounded-sm text-start text-sm font-medium leading-5 transition-colors hover:bg-accent${muted ? " text-muted-foreground/60" : ""}`} title="Rename"
+				onClick={() => { cancelled.current = false; setDraft(name); setEditing(true); }} text={name} />}
 		{failure && <span role="alert" className="block text-xs text-error">{failure}</span>}
 	</span>;
 }
@@ -201,7 +203,7 @@ export function SourceFolderTree<T extends TreeSource>({ groups, directory, quer
 						{open ? <FolderOpenIcon className="size-3.5 shrink-0" /> : <FolderIcon className="size-3.5 shrink-0" />}
 					</button>
 					{onAction ? <EditableSourceName name={folder.name} onSave={(name) => onAction({ action: "rename-folder", id: folder.id, name })} />
-						: <span className="min-w-0 flex-1 truncate text-sm font-medium">{folder.name}</span>}
+						: <BidiText className="min-w-0 flex-1 truncate text-sm font-medium" text={folder.name} />}
 					<TreeCell widthClassName="w-14" align="right" className="text-xs tabular-nums text-muted-foreground">{members.length}</TreeCell>
 					<TreeCell widthClassName="w-20" align="right" className="text-xs tabular-nums text-muted-foreground">{folder.createdAt.slice(0, 10)}</TreeCell>
 				</SourceDragRow>
