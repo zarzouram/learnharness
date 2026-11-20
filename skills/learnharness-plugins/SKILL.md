@@ -115,6 +115,9 @@ The included no-build examples can be copied directly; they do not need npm setu
   below Settings/dialogs. Use public content mounts and respect generation cleanup.
 - `ctx.documents.toMarkdown` accepts a browser File (PDF/strict UTF-8), not paths or
   JSON-bridge uploads. It is bounded/cooperatively canceled, not OCR/storage/inference.
+- Learner or model text in plugin DOM goes through `ctx.text`: `show` for labels and
+  names, field `dir` from `direction` on input and after code sets a value, and `fold`
+  on both sides of a search. Never `dir="auto"`; fall back to plain text without `ctx.text`.
 - Inference needs explicit available model and truthful user/background purpose. No
   silent provider/key fallback. Managed conversations and result workers have distinct
   lifecycle/request-ID semantics; observation/navigation does not cancel execution.

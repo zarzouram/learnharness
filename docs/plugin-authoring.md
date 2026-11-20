@@ -91,6 +91,7 @@ a plugin.
 | Render code fences or tool results | `registerCodeBlock`, `registerToolRenderer` below |
 | Display a controlled hierarchy | `ctx.ui.mountTree`; [tree contract](plugin-tree-contract.md) |
 | Convert an uploaded PDF/text file | Frontend `ctx.documents.toMarkdown` below |
+| Show or search text in any language, Arabic included | Frontend `ctx.text` below |
 | Read saved learning records | Backend `ctx.learning` below |
 | Call models, run conversations or result tasks | Backend `ctx.inference`, `ctx.agents`, `ctx.workers` below |
 
@@ -501,6 +502,37 @@ DTO, path/URL/token input, or file-picker API. Use a native input and this helpe
 Cancellation is cooperative, not a deadline/CPU/peak-memory/process-isolation guarantee.
 PDF fake-worker parsing can execute synchronously. Conversion performs no persistence,
 model requests or learning-data changes; the plugin may later save returned text itself.
+
+## Text direction and search
+
+Learner and model text may be right-to-left (Arabic, Hebrew) inside the English UI.
+Frontend `ctx.text` lends a plugin the rule the host applies to its own surfaces. Its
+three functions are pure and synchronous.
+
+| Call | Use it for |
+| --- | --- |
+| `ctx.text.show(element, text, {multiline}?)` | A label, heading or name in an element the plugin owns |
+| `ctx.text.direction(text, {format}?)` | A field: `input.dir = ctx.text.direction(input.value) ?? ""` |
+| `ctx.text.fold(text)` | Search: fold both sides, then compare |
+
+- `direction` gives `"rtl"` when the text holds any right-to-left letter, else `"ltr"`
+  when it holds any letter, else `undefined`. A URL reads left-to-right. A field that
+  holds Markdown source passes `{format: "markdown"}`, which skips code and math as the
+  rendered Markdown does.
+- Set a field's `dir` in its `input` handler, and again after code sets its value, since
+  that fires no event. Do not use `dir="auto"`: it follows the first letter, so
+  `Newton ينص...` would read left-to-right.
+- `show` sets or clears the element's `dir` and replaces its children. It promises only
+  that `dir` and a `textContent` equal to the text (whitespace collapsed to single spaces,
+  unless `multiline` keeps the lines). Do not style or test the nodes inside. A call with
+  unchanged text costs almost nothing, so a refresh may call it on every row.
+- For a name inside an English sentence, put the name in its own `<span>` and `show` it.
+- `fold` lowercases and drops marks and letter variants, so `كتب` finds `كَتَبَ` and
+  `cafe` finds `café`. Never store or show the folded text.
+- The host already directs `mountMarkdown`, composers, and the strings a plugin passes to
+  tree rows, cells and headers, menu items, button labels and badges.
+- An older host has no `ctx.text`. Check `typeof ctx.text?.show === "function"` and fall
+  back to `textContent`, as Flashcards does.
 
 ## Backend and data
 

@@ -267,7 +267,6 @@ Known gaps:
 
 - Mermaid labels take the direction of their first strong letter, not the rule above.
 - Tool-call arguments in tool cards, such as paths and search patterns, stay left-to-right on purpose.
-- Plain text that a plugin writes into its own DOM, or passes as a string to a host widget such as a tree row, is not directed yet. Plugin Markdown and plugin composers are.
 
 **Search folding** in [`text-search.ts`](../src/core/text-search.ts) lets a query find text that differs only in marks or letter forms. It does not depend on the direction rule.
 
@@ -276,6 +275,14 @@ Known gaps:
 - `LETTER_MARKS` lists the scripts where a mark is part of the letter (kana, the Indic scripts, Thai and their kin). Those marks stay, so `バス` never finds `ハス`.
 - Stored text never changes. Session Find maps each match back to the original span through `normalizeWithMap`.
 - Fuzzy scoring, graph filtering, Session Find and the auditor's duplicate search all use it.
+
+**Plugins** get both rules at run time through `ctx.text` on the frontend context, wired in [`plugin-manager.ts`](../components/plugin-manager.ts). A plugin cannot import host code, so it borrows the rule instead of copying it. The plugin API version stays 1.
+
+- `direction` is `contentDirection`, `show` is `showText`, and `fold` is `normalizeForSearch`.
+- `showText` returns early when the element still shows the same text, so a plugin tree that refreshes every row repaints only the rows that changed.
+- The host directs the strings a plugin passes to its widgets: tree rows, cells and headers ([`plugin-tree.tsx`](../components/plugin-tree.tsx)), menu item and button labels ([`plugin-ui-host.tsx`](../components/plugin-ui-host.tsx)), and badges ([`status-badge.tsx`](../components/ui/status-badge.tsx)). A menu item is a block, because a flex item drops the space at the edge of an isolated run.
+- Plugin Markdown and plugin composers render through the host's Markdown blocks and `PathInput`, so they need nothing more.
+- Flashcards is the one core plugin that writes learner text into its own DOM. It uses `ctx.text` and falls back to plain text on an older host. The authoring rules are in [`plugin-authoring.md`](plugin-authoring.md#text-direction-and-search).
 
 ## Verification starting points
 
