@@ -199,6 +199,40 @@ The [session-extension contract](plugin-session-extension-contract.md) specifies
 
 Native and plugin dialogs, anchored popups and page surfaces share [`interaction-layers.tsx`](../components/interaction-layers.tsx). Escape belongs to one eligible topmost owner; covered scopes cannot submit, dictate, or steal focus. Dialogs use the shared host frame, while plugins mount content through controlled HTMLElement/cleanup contracts. Settings has a single host-owned instance. Focus entry/return respects newer owners; visual stacking alone does not make one plugin the lifetime owner of another plugin's surface. See [plugin UI contracts](plugin-authoring.md#controlled-host-ui) and [plugin architecture](plugin-architecture.md).
 
+## Content direction
+
+The UI is English and runs left-to-right. Learner and model text takes its **content direction** from its own letters, never from a setting. The rule lives in [`bidi.ts`](../src/core/bidi.ts), which is pure and browser-safe.
+
+- `contentDirection(text, format)` gives `rtl` when the text holds any right-to-left letter, else `ltr` when it holds any letter, else `undefined` (inherit).
+  - It is not the Unicode first-strong rule (UAX #9 P2). An Arabic sentence often opens with an English term (`Newton ينص...`), and first-strong would make it left-to-right.
+  - A URL reads as left-to-right whatever its path holds. `See https://ar.wikipedia.org/wiki/فيزياء for details.` stays English, and the URL alone is `ltr`.
+  - `"plain"` text is literal. `"markdown"` is raw source, so balanced math and code are skipped first.
+  - A field and the surface that shows its value use the same format, so they get the same answer.
+  - The letter test covers every default right-to-left Unicode block. Hebrew, Persian or Syriac needs no change.
+- `ltrRuns` finds the left-to-right runs inside right-to-left text (`C++`, `f(x)`, a URL). `ltrPhrases` finds them across inline markup.
+- `letterDirection` reads the letters alone, for labels drawn every frame.
+
+Markdown blocks ([`md-blocks.tsx`](../components/md-blocks.tsx)) apply the rule per block:
+
+- Each paragraph, heading, quote, list and table states its own `dir` from its prose. Items and cells inherit it.
+- A block states `dir="ltr"` only where it overrides a right-to-left context.
+- Inside a right-to-left block, each left-to-right phrase sits in one `<span dir="ltr">`. Bold or italic that a phrase crosses is cut at the phrase boundary. Links are never cut.
+- Code and math always carry `dir="ltr"`. They have no direction of their own, so they never count toward the block's.
+
+`BidiText` ([`bidi-text.tsx`](../components/bidi-text.tsx)) applies the rule to plain text read literally, where `$` and backticks are characters:
+
+- The element itself carries `dir`, so a truncated title is cut at the correct end.
+- A right-to-left line isolates its left-to-right phrases, as a block does.
+- Text with line breaks becomes one block per line, each with its own direction.
+- New UI that shows learner or model text uses Markdown or `BidiText`, not a bare string.
+
+The CSS in [`globals.css`](../app/globals.css) covers what markup cannot:
+
+- `:dir(rtl)` removes letter-spacing and synthetic italics from any right-to-left element. Joined Arabic letters gap under tracking, and the script has no slanted form.
+- `.katex` is isolated left-to-right, so an equation never takes its sentence's direction.
+- Mermaid output is injected unchanged, so its labels get `unicode-bidi: plaintext`. This is the one exception to the rule above: each label takes the direction of its first strong letter.
+- List indents, the quote rule and table column separators sit on logical sides. Table header cells align to the start edge.
+
 ## Verification starting points
 
 Tests use injected engines/ports, fake transports, and renderer seams. Start with `chat-flow`, `session-core`, `turn-recovery`, `job-delivery-recovery`, `extraction`, `notes-import-route`, `practice-flow`, `prompt-overrides`, `golden-fixtures`, and `plugin-*` under `tests/`. Fixture checks establish their exercised contracts, not live account entitlements, teaching quality, or cross-process durability. Commands and runtime prerequisites belong in [Development](development.md#checks). Historical plugin verification records live in the [archive](archive/plugin-implementation-history.md), not the current runtime contract.
