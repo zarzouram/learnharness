@@ -67,7 +67,7 @@ export type { NativeSubscriptionProviderId, NativeSubscriptionLogicalId, NativeS
 export * from "./cost-summary.ts";
 export { CLAUDE_CODE_PROVIDER, CLAUDE_CODE_MINIMUM_VERSION, type ClaudeCodeStatus } from "./contracts/claude-code.ts";
 export * from "./fuzzy.ts";
-export { BREAK_TEXT, LITERAL_TEXT, contentDirection, directedLines, hasRtlLetter, isolateLtrRuns, isolateName, letterDirection, ltrPhrases, ltrRuns } from "./bidi.ts";
+export { BREAK_TEXT, LITERAL_TEXT, contentDirection, directedLines, hasRtlLetter, isolateLabel, isolateLtrRuns, isolateName, letterDirection, ltrPhrases, ltrRuns } from "./bidi.ts";
 export type { BidiSegment, ContentDirection, ContentFormat, DirectedLine, InlinePart, PartSlice, Phrase } from "./bidi.ts";
 export * from "./text-search.ts";
 // settings.ts + settings-resolution.ts (settings-storage wave, 2026-09-19):

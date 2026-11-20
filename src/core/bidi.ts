@@ -235,6 +235,16 @@ export function isolateLtrRuns(text: string): string {
 	return ltrRuns(text).map((run) => (run.ltr ? `\u2066${run.text}\u2069` : run.text)).join("");
 }
 
+/** A label as it is drawn without markup: isolated (`isolateLtrRuns`) when
+ * `label`, the whole label `text` was cut from, is right-to-left by
+ * `letterDirection`, the rule the canvas and the SVG title take their own
+ * direction from; otherwise unchanged. A line wrapped out of a label keeps the
+ * label's choice, so the line `C++` of `\u062a\u0639\u0644\u0645 C++` is still isolated and draws
+ * as `C++`, not `++C`, in the label's right-to-left direction. */
+export function isolateLabel(text: string, label: string = text): string {
+	return letterDirection(label) === "rtl" ? isolateLtrRuns(text) : text;
+}
+
 /** What a part that is not text adds to the run scan: code and math read as one
  * left-to-right letter, and a break (line, list item, cell, nested block) ends every run. */
 export const LITERAL_TEXT = "a";

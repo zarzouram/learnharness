@@ -22,6 +22,7 @@ import type { PlanBlockData, PlanTree } from "../src/core/contracts.ts";
 // Plan blocks: the pure layered layout, the frozen-snapshot rendering
 // (full = borderless + column-filling
 // with the glowing current), and the popup's LIVE derivation.
+// Titles keep their graphemes whole and select RTL per title.
 
 const CHAIN: PlanTree = {
 	nodes: [
@@ -67,6 +68,16 @@ const mono = fake(11, (s) => graphemesOf(s).length * 6.6);
 const cjk = fake(11, (s) => graphemesOf(s).reduce((w, g) => w + (/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}、。「」]/u.test(g) ? 11 : 6.6), 0));
 
 describe("plan block layout (pure)", () => {
+	it("wraps a title with tashkeel at spaces only, each letter keeping its marks", () => {
+		const title = "الْمُشْتَقَّةُ الْجُزْئِيَّةُ وَتَطْبِيقَاتُهَا الْعَمَلِيَّةُ فِي الْفِيزْيَاءِ";
+		for (const measure of [chartMeasure, mono]) {
+			const { lines } = single(title, measure);
+			assert.ok(lines.length > 1);
+			assert.equal(lines.join(" "), title);
+			for (const line of lines) assert.ok(!/^\p{M}/u.test(line));
+		}
+	});
+
 	it("layers a chain top-down, one node per depth row", () => {
 		const { order, depth } = topoFor(CHAIN.nodes, CHAIN.edges);
 		assert.deepEqual(order.map((n) => n.id), ["a", "b", "c"]);
@@ -231,6 +242,53 @@ describe("plan block layout fits any font (#671)", () => {
 });
 
 describe("plan block render", () => {
+	it("sets the SVG direction per complete title and leaves letterless titles inheriting", () => {
+		const data: PlanBlockData = {
+			kind: "full",
+			at: "2026-10-24T12:00:00Z",
+			current: null,
+			nodes: [
+				{ id: "rtl", title: "Newton ينص على أن القوى تتوازن في هذا المثال", status: "upcoming" },
+				{ id: "he", title: "שָׁלוֹם", status: "upcoming" },
+				{ id: "latin", title: "English title", status: "upcoming" },
+				{ id: "math", title: "1 + 2", status: "upcoming" },
+			],
+			edges: [],
+		};
+		const html = renderToStaticMarkup(<PlanBlock data={data} onOpen={() => {}} />);
+		for (const id of ["rtl", "he"]) {
+			const group = html.match(new RegExp(`data-testid="plan-node-${id}"[^]*?</g>`))![0];
+			const texts = group.match(/<text[^>]*>/g)!;
+			assert.ok(texts.length > 0);
+			for (const text of texts) {
+				assert.match(text, /direction="rtl"/);
+				assert.doesNotMatch(text, /unicode-bidi=/);
+				assert.match(text, /text-anchor="middle"/);
+			}
+		}
+		for (const id of ["latin", "math"]) {
+			const group = html.match(new RegExp(`data-testid="plan-node-${id}"[^]*?</g>`))![0];
+			assert.doesNotMatch(group, /direction=|unicode-bidi=/, id);
+		}
+	});
+
+	it("isolates each left-to-right run of a right-to-left title, and nothing in an English one", () => {
+		const data: PlanBlockData = {
+			kind: "full",
+			at: "2026-10-24T12:00:00Z",
+			current: null,
+			nodes: [
+				{ id: "rtl", title: "تعلم C++", status: "upcoming" },
+				{ id: "latin", title: "Learn C++", status: "upcoming" },
+			],
+			edges: [],
+		};
+		const html = renderToStaticMarkup(<PlanBlock data={data} onOpen={() => {}} />);
+		const textOf = (id: string) => html.match(new RegExp(`data-testid="plan-node-${id}"[^]*?<text[^>]*>([^<]*)</text>`))![1];
+		assert.equal(textOf("rtl"), "تعلم \u2066C++\u2069");
+		assert.equal(textOf("latin"), "Learn C++");
+	});
+
 	it("full block: borderless, column-filling, statuses AS CARRIED (never re-derived)", () => {
 		const data: PlanBlockData = {
 			kind: "full",

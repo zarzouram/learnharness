@@ -18,7 +18,7 @@ import {
 	type PlanLayout,
 } from "@/components/plan-layout";
 import type { PlanBlockData, PlanNodeStatus, PlanTree } from "@/src/core";
-import { derivedNodeStatus, derivePlanStatuses } from "@/src/core";
+import { derivedNodeStatus, derivePlanStatuses, isolateLabel, letterDirection } from "@/src/core";
 import { Hint } from "@/components/ui/hint";
 import { useAppearance } from "@/components/settings/appearance";
 import { InteractionLayerOwner, useInteractionLayer } from "./interaction-layers";
@@ -448,6 +448,8 @@ export function PlanDiagram({
 				const status = statusOf(n.id);
 				const glow = n.id === glowId && !monochrome;
 				const lines = layout.lines.get(n.id) ?? [n.title];
+				// Only a right-to-left title carries the attribute; the rest inherit.
+				const dir = letterDirection(n.title) === "rtl" ? "rtl" : undefined;
 				// The box hugs its measured, wrapped lines; text centers in it
 				// both ways — each line's middle sits on its own row's middle
 				// (dominant-baseline central), so no font-specific baseline
@@ -491,9 +493,11 @@ export function PlanDiagram({
 								y={y0 + i * layout.lineH}
 								textAnchor="middle"
 								dominantBaseline="central"
+								direction={dir}
 								className={monochrome ? MONO_TEXT : TEXT[status]}
 							>
-								{line}
+								{/* A <text> has no spans, so the isolates keep `C++` in order; they add no width to the measured line. */}
+								{isolateLabel(line, n.title)}
 							</text>
 						))}
 					</g>

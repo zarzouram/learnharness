@@ -14,7 +14,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { parseHTML } from "linkedom";
 import { BidiText } from "../components/bidi-text.tsx";
 import { showText } from "../components/directed-text.ts";
-import { BREAK_TEXT, LITERAL_TEXT, contentDirection, directedLines, hasRtlLetter, letterDirection, ltrPhrases, ltrRuns } from "../src/core/bidi.ts";
+import { BREAK_TEXT, LITERAL_TEXT, contentDirection, directedLines, hasRtlLetter, isolateLabel, letterDirection, ltrPhrases, ltrRuns } from "../src/core/bidi.ts";
 import type { BidiSegment, InlinePart, Phrase } from "../src/core/bidi.ts";
 
 /** The direction of raw Markdown source, as a composer holds it. */
@@ -381,6 +381,29 @@ describe("directedLines: plain text as a surface shows it", () => {
 		assert.deepEqual(lines[0]!.runs, [piece("مرحبا "), ltr("Newton"), piece("\n")]);
 		assert.equal(lines.flatMap((line) => line.runs.map((run) => run.text)).join(""), text);
 		assert.deepEqual(directedLines("a  b", { multiline: true }), [{ dir: "ltr", runs: [piece("a  b")] }], "no break: one line, not collapsed");
+	});
+});
+
+describe("isolateLabel: a label drawn without markup", () => {
+	const LRI = "\u2066";
+	const PDI = "\u2069";
+
+	it("isolates each left-to-right run only when the label is right-to-left", () => {
+		assert.equal(isolateLabel("تعلم C++"), `تعلم ${LRI}C++${PDI}`);
+		assert.equal(isolateLabel("Learn C++"), "Learn C++");
+		assert.equal(isolateLabel("1 + 2"), "1 + 2");
+		assert.equal(isolateLabel(""), "");
+	});
+
+	it("a line cut from a label follows the whole label, so an English line of an Arabic label stays isolated", () => {
+		assert.equal(isolateLabel("C++", "تعلم C++"), `${LRI}C++${PDI}`);
+		assert.equal(isolateLabel("تعلم", "تعلم C++"), "تعلم");
+		assert.equal(isolateLabel("C++", "Learn C++"), "C++");
+	});
+
+	it("reads the letters alone, as the canvas direction does: a URL with an Arabic path is one isolated run", () => {
+		const url = "https://ar.wikipedia.org/wiki/فيزياء";
+		assert.equal(isolateLabel(url), `${LRI}${url}${PDI}`);
 	});
 });
 
