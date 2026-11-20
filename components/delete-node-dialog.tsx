@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactElement, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactElement, type ReactNode } from "react";
+import { BidiText } from "@/components/bidi-text";
 import { HostDialog } from "@/components/host-dialog";
 
 /** The 409 extraction_running line (owner phrasing, node interlude):
@@ -71,17 +72,15 @@ export function DeleteNodeBody({
 			    more" — the count in the title carries the full number). */}
 			<div className="mt-1.5">
 				{nodes.length === 1 ? (
-					<code data-testid="node-name-code" className="font-mono text-sm text-foreground">
-						{nodes[0]?.name}
-					</code>
+					<BidiText as="code" data-testid="node-name-code" className="font-mono text-sm text-foreground" text={nodes[0]?.name ?? ""} />
 				) : (
 					<code data-testid="node-names-code" className="font-mono text-sm text-foreground">
-						{nodes.slice(0, 8).map((n) => n.name).join(", ")}
+						{nodes.slice(0, 8).map((n, index) => <Fragment key={n.id}>{index > 0 && ", "}<BidiText text={n.name} /></Fragment>)}
 						{nodes.length > 8 ? `, and ${nodes.length - 8} more` : ""}
 					</code>
 				)}
 			</div>
-			{folders.length > 0 && <p className="mt-2 text-sm" data-testid="folder-removal-names">Empty folders: {folders.map((f) => f.name).join(", ")}</p>}
+			{folders.length > 0 && <p className="mt-2 text-sm" data-testid="folder-removal-names">Empty folders: {folders.map((f, index) => <Fragment key={f.id}>{index > 0 && ", "}<BidiText text={f.name} /></Fragment>)}</p>}
 			{nodes.length > 0 && <p className="mt-2 text-sm text-muted-foreground" data-testid="node-permanence-line">
 				{nodes.length === 1
 					? "This permanently deletes the node — this cannot be undone."

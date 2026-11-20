@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, type ReactElement, type ReactNode } from "react";
+import { BidiText } from "@/components/bidi-text";
 import { HostDialog } from "@/components/host-dialog";
-import type { ChatDeleteMode, ChatListItem, FolderDeletionScope } from "@/src/core";
+import { isolateName, type ChatDeleteMode, type ChatListItem, type FolderDeletionScope } from "@/src/core";
 
 /** The graph-traces checkbox copy (owner, 2026-09-24 flow rework — was
  *  the delete-nodes option's body in the two-button design): the
@@ -38,7 +39,7 @@ const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : 
 export function folderDeleteCopy(input: { sessions: number; subfolders: number; notes: number; parentName: string | null }): DeleteDialogCopy {
 	const what = [count(input.sessions, "session", "sessions"), ...(input.subfolders ? [count(input.subfolders, "subfolder", "subfolders")] : [])].join(" and ");
 	const notes = input.notes
-		? ` ${count(input.notes, "imported notes file", "imported notes files")} inside ${input.notes === 1 ? "moves" : "move"} to ${input.parentName === null ? "the top level" : `“${input.parentName}”`}.`
+		? ` ${count(input.notes, "imported notes file", "imported notes files")} inside ${input.notes === 1 ? "moves" : "move"} to ${input.parentName === null ? "the top level" : `“${isolateName(input.parentName)}”`}.`
 		: "";
 	return {
 		label: "Delete folder",
@@ -188,9 +189,7 @@ export function DeleteSessionBody({
 			    sized-up text-lg), still white. Same shape as the node
 			    dialog. */}
 			<div className="mt-1.5">
-				<code data-testid="session-name-code" className="font-mono text-sm text-foreground">
-					{chat.title}
-				</code>
+				<BidiText as="code" data-testid="session-name-code" className="font-mono text-sm text-foreground" text={chat.title} />
 			</div>
 			<p className="mt-2 text-sm text-muted-foreground">{copy.body}</p>
 			<label

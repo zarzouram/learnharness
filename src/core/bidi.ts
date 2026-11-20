@@ -219,6 +219,15 @@ export function directedLines(text: string, options: { multiline?: boolean } = {
 	});
 }
 
+/** A name set inside a left-to-right sentence built as a string, which has no
+ * span to hold it (the folder Delete's "moves to “…”"): a right-to-left name by
+ * `contentDirection` gets its own isolate (U+2067 RLI … U+2069 PDI), its
+ * left-to-right runs isolated inside, the string twin of a `BidiText` span. Any
+ * other name is returned unchanged. */
+export function isolateName(name: string): string {
+	return contentDirection(name) === "rtl" ? `\u2067${isolateLtrRuns(name)}\u2069` : name;
+}
+
 /** The text with each left-to-right run wrapped in an isolate (U+2066 LRI … U+2069
  * PDI), for text drawn without markup (a canvas label, an SVG title): `تعلم C++`
  * then draws `C++` the way the chat shows it, not `++C`. The isolates have no width. */

@@ -92,7 +92,8 @@ describe("DeleteNodeBody — the minimal screen (owner, 2026-09-30)", () => {
 		]);
 		assert.match(three, /Delete 3 nodes\?/); // plural title, NODES
 		assert.match(three, /data-testid="node-names-code"/);
-		assert.match(three, /Kepler&#x27;s three laws, Newton&#x27;s second law, Hooke&#x27;s law/);
+		// Each name is directed on its own; the commas stay between them.
+		assert.match(three.replace(/<[^>]+>/g, ""), /Kepler&#x27;s three laws, Newton&#x27;s second law, Hooke&#x27;s law/);
 		assert.ok(!three.includes('data-testid="node-name-code"'), "the single-name testid is gone in multi");
 		assert.match(three, /This permanently deletes all 3 nodes — this cannot be undone\./);
 		assert.ok(!three.includes("proposition"), "the old word is gone from the dialog");

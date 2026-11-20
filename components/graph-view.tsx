@@ -410,7 +410,7 @@ function GraphCostPanel({ costs }: { costs: GraphCostSummary }) {
 						<div key={run.startedAt} className="flex items-baseline justify-between gap-2 text-[11px]">
 							<span className="min-w-0 flex-1 truncate text-muted-foreground">
 								<span className="text-foreground/70">{timeAgo(run.startedAt)}</span>{" "}
-								{run.title}
+								<BidiText text={run.title} />
 								{run.merged && (
 									<span className="text-muted-foreground">
 										{" "}
@@ -1656,7 +1656,7 @@ export function GraphView({
 				>
 					<Loader2Icon className="size-3.5 shrink-0 animate-spin" />
 					<span className="capitalize">{run.phase}</span>
-					<span className="max-w-48 truncate text-foreground">{run.title}</span>
+					<BidiText className="max-w-48 truncate text-foreground" text={run.title} />
 					<span className="tabular-nums">{Math.max(0, Math.round((Date.now() - run.startedAt) / 1000))}s</span>
 				</div>
 			))}

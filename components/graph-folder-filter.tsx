@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { FolderIcon, FunnelIcon } from "lucide-react";
+import { BidiText } from "@/components/bidi-text";
 import { graphFolderCheck, toggleGraphFolder, type SourceFolder, type SourceOrganization } from "@/src/core";
 import { usePopoverDismiss } from "@/components/popover-dismiss";
 import { useInteractionLayers, type CloseReason } from "@/components/interaction-layers";
@@ -105,7 +106,7 @@ export function GraphFolderFilterControl({ organization, listed, selected, onCha
 						aria-label={`Show folder ${folder.name}`}
 						onChange={(e) => onChange(toggleGraphFolder(organization, selected, folder.id, e.target.checked, listed))} />
 					<FolderIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
-					<span className="min-w-0 flex-1 truncate text-xs">{folder.name}</span>
+					<BidiText className="min-w-0 flex-1 truncate text-xs" text={folder.name} />
 				</label>
 				{renderLevel(folder.id, depth + 1)}
 			</div>
@@ -134,7 +135,7 @@ export function GraphFolderFilterControl({ organization, listed, selected, onCha
 				>
 					<FunnelIcon aria-hidden="true" className={cn("size-4 shrink-0", activeCount > 0 && "text-primary")} />
 					{soleName !== null
-						? <span data-testid="graph-folder-filter-name" className="max-w-40 truncate text-xs">{soleName}</span>
+						? <BidiText data-testid="graph-folder-filter-name" className="max-w-40 truncate text-xs" text={soleName} />
 						: activeCount > 0 && <span className="text-xs tabular-nums">{activeCount}</span>}
 				</button>
 			</Hint>

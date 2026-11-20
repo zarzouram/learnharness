@@ -23,6 +23,7 @@ import type { ArtifactPartProps } from "@/src/core";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { BidiText } from "@/components/bidi-text";
 import { ThinkingBlock } from "@/components/thinking-block";
 import { usePopoverDismiss } from "@/components/popover-dismiss";
 import { INTERACTION_LAYER_Z_BASE } from "@/components/host-dialog";
@@ -269,7 +270,7 @@ function MetadataPopover({
 									{targets.map((t, i) => (
 										<span key={t}>
 											{i > 0 && ", "}
-											{names?.[t] ?? t}
+											<BidiText text={names?.[t] ?? t} />
 										</span>
 									))}
 								</span>

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { ChevronRightIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BidiText } from "@/components/bidi-text";
+import { contentDirection } from "@/src/core";
 
 /**
  * The graph-context card (owner, 2026-10-04): the session's map pick —
@@ -42,17 +44,17 @@ export function GraphContextCard({ data }: { data: GraphContextData }) {
 			{open && (
 				<div data-testid="graph-context-body" className="mt-1 space-y-1 rounded-lg border border-dashed border-border/70 px-4 py-3 text-xs">
 					{propositions.map((p) => (
-						<div key={p.id} data-testid={`graph-context-prop-${p.id}`} className="leading-relaxed">
-							<span className="font-medium text-foreground/80">{p.name}</span>
-							<span className="text-muted-foreground"> — {p.statement}</span>
+						// The row reads as one sentence in the direction of its text; the
+						// name and the statement each keep their own.
+						<div key={p.id} data-testid={`graph-context-prop-${p.id}`} dir={contentDirection(`${p.name} ${p.statement}`)} className="text-start leading-relaxed">
+							<BidiText className="font-medium text-foreground/80" text={p.name} />
+							<span className="text-muted-foreground"> — <BidiText text={p.statement} /></span>
 						</div>
 					))}
 					{chains.length > 0 && (
 						<div className="pt-1">
 							{chains.map((c, i) => (
-								<div key={i} className="font-mono text-[11px] text-muted-foreground">
-									{c}
-								</div>
+								<BidiText key={i} as="div" className="font-mono text-[11px] text-muted-foreground" text={c} />
 							))}
 						</div>
 					)}

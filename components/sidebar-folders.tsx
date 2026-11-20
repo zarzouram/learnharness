@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type DragEvent, type MouseEvent as ReactMouseEvent } from "react";
 import { ChevronRightIcon, FolderIcon, FolderOpenIcon } from "lucide-react";
 import { canMoveFolder, type OrganizationAction, type SourceFolder, type SourceOrganization } from "@/src/core";
+import { BidiText } from "@/components/bidi-text";
 import { EditableSourceName, SOURCE_DRAG_TYPE, SourceDragRow } from "@/components/source-folder-tree";
 import { cn } from "@/lib/utils";
 
@@ -131,7 +132,7 @@ export function SidebarFolderRow({ folder, depth, open, dropActive, renaming, on
 					style={{ paddingLeft: sidebarFolderBox(depth).paddingLeft }}>
 					<ChevronRightIcon aria-hidden="true" className={cn("size-3.5 shrink-0 text-muted-foreground/70", open && "rotate-90")} />
 					<Icon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
-					<span className={cn("min-w-0 flex-1 truncate", sidebarNameFont(compact))}>{folder.name}</span>
+					<BidiText className={cn("min-w-0 flex-1 truncate", sidebarNameFont(compact))} text={folder.name} />
 				</button>
 			)}
 		</SourceDragRow>
