@@ -72,8 +72,9 @@ import { PluginGraphActions } from "@/components/plugin-chrome";
 import { SettingsSlider as SettingSlider } from "@/components/settings/controls";
 import Link from "next/link";
 import { FileTextIcon, ListTreeIcon, Loader2Icon, SearchIcon, SettingsIcon, WaypointsIcon } from "lucide-react";
-import { graphFolderIds, graphFolderVisibleIds, incrementalLayout, normalizeForSearch, propositionSessionHref, type GraphCostSummary, type GraphNode, type GraphSnapshot } from "@/src/core";
+import { graphFolderIds, graphFolderVisibleIds, incrementalLayout, letterDirection, normalizeForSearch, propositionSessionHref, type GraphCostSummary, type GraphNode, type GraphSnapshot } from "@/src/core";
 import { planCostLabel } from "@/components/usage-format";
+import { BidiText } from "@/components/bidi-text";
 import { CLUSTER_LIGHTNESS, GraphCanvasRenderer, type GraphRenderSettings } from "./graph-canvas.ts";
 import { useAppearance } from "@/components/settings/appearance";
 import { usePopoverDismiss } from "@/components/popover-dismiss";
@@ -864,6 +865,7 @@ export function GraphChromeRow({
 						<input
 							ref={searchInputRef}
 							value={query}
+							dir={letterDirection(query)}
 							onChange={(e) => onQuery(e.target.value)}
 							placeholder="Search nodes…"
 							aria-label="Search nodes"
@@ -1669,7 +1671,7 @@ export function GraphView({
 					// lh-no-drag: the card is placed anywhere on the canvas —
 					// when it lands in the top strip it must stay interactive
 					// over home.tsx's drag surface (2026-09-17).
-					className="lh-no-drag absolute z-10 w-80 max-w-[calc(100%-1rem)] rounded-xl border bg-card p-4 text-left shadow-lg"
+					className="lh-no-drag absolute z-10 w-80 max-w-[calc(100%-1rem)] rounded-xl border bg-card p-4 text-start shadow-lg"
 				>
 					<NodeCardText name={selected.node.name} statement={selected.node.statement} />
 					{selected.sourceIds.length > 0 ? (
@@ -1682,22 +1684,20 @@ export function GraphView({
 									return (
 										<div key={sourceId} className="flex items-center gap-1.5">
 											<FileTextIcon className="size-3.5 shrink-0 text-muted-foreground" />
-											<span className="min-w-0 flex-1 truncate px-2 py-1.5 text-sm text-muted-foreground">
-												{snapshot.fileSources[sourceId]}
-											</span>
+											<BidiText className="min-w-0 flex-1 truncate px-2 py-1.5 text-sm text-muted-foreground" text={snapshot.fileSources[sourceId] ?? sourceId} />
 										</div>
 									);
 								}
 								// A real session: deep-linkable provenance.
 								return (
 									<div key={sourceId} className="flex items-center gap-1.5">
-										<Link
+										<BidiText
+											as={Link}
 											href={propositionSessionHref(selected.node, sourceId)}
 											scroll={false}
 											className="min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
-										>
-											{snapshot?.sessions[sourceId] ?? sourceId}
-										</Link>
+											text={snapshot?.sessions[sourceId] ?? sourceId}
+										/>
 									</div>
 								);
 							})}

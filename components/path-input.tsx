@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { FilePathChip } from "./file-path-chip";
 import { CitationChip } from "./citation-chip";
 import { cn } from "../lib/utils";
+import { contentDirection, parseComposerTokens } from "@/src/core";
 import {
 	adjacentPathRange, atomicPathRange, clampPathSelection, insertCitation, insertFilePaths, locateToken,
 	normalizePathEdit, normalizePathInputValue, pathInputStaticRange, PathInputHistory, readPathInput, readPathSelection, renderPathInput,
@@ -34,6 +35,12 @@ export type PathInputProps = Omit<React.HTMLAttributes<HTMLDivElement>, "childre
 	singleLine?: boolean;
 };
 
+/** The field's direction, read from its text alone as the sent message reads
+ *  it (`filePathChunks`), so a file path or citation chip never counts. */
+function fieldDirection(value: string) {
+	return contentDirection(parseComposerTokens(value).flatMap((token) => token.kind === "text" ? [token.text] : []).join(""));
+}
+
 type Controller = {
 	external: (value: string) => void;
 	remember: () => void;
@@ -42,6 +49,7 @@ type Controller = {
 /**
  * A controlled plaintext editor. Only the source string is state; chips are atomic
  * views of it. React never reconciles the editable DOM after a native mutation.
+ * The field takes its direction from its own text; a passed `dir` wins.
  */
 /** The field's own box classes (the question card's layout stand-in
  *  rebuilds an empty field from them). */
@@ -52,7 +60,7 @@ export function pathInputClassName(singleLine: boolean): string {
 export const PathInput = React.forwardRef<HTMLDivElement, PathInputProps>(function PathInput({
 	value, onValueChange, placeholder, autoFocus, defaultDropTarget = false, fileInsertion = true, singleLine = false, className,
 	onKeyDown, onFocus, onBlur, onInput, onPaste, onCopy, onCut,
-	onCompositionStart, onCompositionEnd, ...props
+	onCompositionStart, onCompositionEnd, dir, ...props
 }, forwardedRef) {
 	const rootRef = React.useRef<HTMLDivElement>(null);
 	const controllerRef = React.useRef<Controller | null>(null);
@@ -327,6 +335,7 @@ export const PathInput = React.forwardRef<HTMLDivElement, PathInputProps>(functi
 		<div
 			{...props}
 			ref={rootRef}
+			dir={dir ?? fieldDirection(value)}
 			role="textbox"
 			aria-label={props["aria-label"] ?? placeholder}
 			aria-multiline={singleLine ? "false" : "true"}

@@ -79,6 +79,14 @@ async function fixture(options: { prepareSubmission?: PreparePluginQuestionSubmi
 	return { state, draft, render, delivery, mount, get registration() { return registration; }, replaceRegistration(next: QuestionRendererRegistration | undefined) { registration = next; }, commandSubmit, get editorProps() { return editorProps; }, get dictation() { return dictation; }, get socket() { return Socket.all.at(-1)!; } };
 }
 
+test("Your thinking takes its draft's direction, as every host thinking field does", async () => {
+	const f = await fixture({ thinking: true });
+	const field = () => document.querySelector('[data-testid="thinking-field"] [data-file-path-input]')!;
+	assert.equal(field().getAttribute("dir"), null);
+	f.draft.thinking = "أفكر في الحل"; await f.render();
+	assert.equal(field().getAttribute("dir"), "rtl");
+});
+
 test("silent plugin preparation keeps its submit latch and current draft without adding progress controls", async () => {
 	const gate = deferred<void>(); let preparations = 0, captured: ChatInput | undefined;
 	const f = await fixture({ prepareSubmission: async (capture, valid) => {

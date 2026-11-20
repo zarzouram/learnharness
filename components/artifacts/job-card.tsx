@@ -1,6 +1,7 @@
 "use client";
 
 import { DispatchCard } from "@/components/artifacts/dispatch-card";
+import { BidiText } from "@/components/bidi-text";
 import { MessageResponse } from "@/components/ai-elements/message";
 import { isWebSourceUrl, type ArtifactPartProps, type PdfResult, type ResearchResult } from "@/src/core";
 
@@ -100,19 +101,21 @@ export function ResearchBriefCard({ output }: { output: unknown }) {
 					<div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Sources</div>
 					<ul className="flex flex-col gap-0.5 text-xs">
 						{result.sources.map((s) => (
-							<li key={s.url} className="truncate">
+							<li key={s.url}>
+								{/* The title is the truncating element, so its own direction
+								    decides which end the ellipsis cuts. */}
 								{isWebSourceUrl(s.url) ? (
-									<a
+									<BidiText
+										as="a"
 										href={s.url}
 										target="_blank"
 										rel="noopener noreferrer"
-										className="text-primary underline-offset-2 hover:underline"
-									>
-										{s.title}
-									</a>
+										className="inline-block max-w-full align-bottom truncate text-primary underline-offset-2 hover:underline"
+										text={s.title}
+									/>
 								) : (
 									// Saved before sources were limited to http(s): never a link.
-									<span className="text-muted-foreground">{s.title}</span>
+									<BidiText className="inline-block max-w-full align-bottom truncate text-muted-foreground" text={s.title} />
 								)}
 							</li>
 						))}

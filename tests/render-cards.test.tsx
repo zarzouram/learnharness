@@ -841,3 +841,65 @@ describe("question context renders as markdown everywhere (owner, 2026-10-12)", 
 		assert.ok(!html.includes("lh-prose block text-xs"), "no description slot without an ask input");
 	});
 });
+
+describe("model-authored text takes its own direction", () => {
+	const ARABIC = "ما هو قانون نيوتن الثاني؟";
+
+	it("a probe-done strand in Arabic is rtl, an English assessment beside it ltr", () => {
+		const html = renderToStaticMarkup(
+			<ProbeDoneCard
+				part={{
+					state: "input-available",
+					input: { assessment: { strands: [{ strand: ARABIC, assessment: "Solid." }], summary: "Short." } },
+				} as never}
+			/>,
+		);
+		// Strands render as Markdown: each paragraph states its own direction, and
+		// an English one needs none on the left-to-right page.
+		assert.ok(html.includes(`<p dir="rtl">${ARABIC}</p>`), html);
+		assert.ok(html.includes("<p>Solid.</p>"), html);
+	});
+
+	it("a probe-done summary and a retry error each read in their own text's direction", () => {
+		const summary = renderToStaticMarkup(
+			<ProbeDoneCard
+				part={{
+					state: "input-available",
+					input: { assessment: { strands: [{ strand: "Limits", assessment: "Solid." }], summary: ARABIC } },
+				} as never}
+			/>,
+		);
+		assert.ok(summary.includes(`<p dir="rtl">${ARABIC}</p>`), summary);
+		const retry = renderToStaticMarkup(
+			<ProbeDoneCard part={{ state: "output-available", output: { ok: false, error: ARABIC } } as never} />,
+		);
+		assert.ok(retry.includes(`<p class="text-sm text-muted-foreground">The prober retried: <span dir="rtl">${ARABIC}</span></p>`), retry);
+	});
+
+	it("a dismissed answered card keeps an English question left-to-right", () => {
+		const answer = { ...buildAnswer(quizQD(), { dontKnow: true }), dismissed: true };
+		const html = renderToStaticMarkup(<AnsweredCard answer={answer} />);
+		assert.ok(html.includes('<span class="font-medium" dir="ltr">Which planet is closest to the sun?</span>'));
+	});
+
+	it("both collapsed question bars show an Arabic teaser as rtl and an English one as ltr, inline code ltr either way", () => {
+		for (const reveal of [false, true]) {
+			const bar = (question: string) => renderToStaticMarkup(
+				<QuestionDock
+					toolName="quiz"
+					toolCallId="q-ar"
+					input={{ ...quizInput, question } as never}
+					expanded={false}
+					reveal={reveal}
+					onExpand={() => {}}
+					onSubmit={() => {}}
+				/>,
+			);
+			const arabic = bar(`${ARABIC} \`F = ma\``);
+			assert.match(arabic, /<span data-question-preview="[^"]*" data-ready="false" dir="rtl"/, String(reveal));
+			assert.match(arabic, /<code data-streamdown="inline-code" dir="ltr"[^>]*>F = ma<\/code>/, String(reveal));
+			assert.ok(arabic.includes(ARABIC), String(reveal));
+			assert.match(bar("Which planet is closest to the sun?"), /<span data-question-preview="[^"]*" data-ready="false" dir="ltr"/, String(reveal));
+		}
+	});
+});

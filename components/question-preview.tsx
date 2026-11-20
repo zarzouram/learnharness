@@ -3,8 +3,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { Streamdown, type ExtraProps, type PluginConfig } from "streamdown";
 import { streamdownPlugins } from "@/components/ai-elements/message";
-import { MarkdownStrong } from "@/components/md-blocks";
-import { repairMathForDisplay, transformMathDelimiters } from "@/src/core";
+import { Flow, MarkdownStrong } from "@/components/md-blocks";
+import { contentDirection, repairMathForDisplay, transformMathDelimiters, type ContentDirection } from "@/src/core";
 
 // Transform the renderer's parsed Markdown, not a whitespace-flattened source:
 // flattening first destroys code fences and significant spaces in inline code.
@@ -86,15 +86,22 @@ function remarkQuestionPreviewPrefix({ cutBeforeMath }: { cutBeforeMath: number 
 }
 
 const previewComponents = {
-	p: ({ children, title }: ComponentProps<"p"> & ExtraProps) => <span data-preview-cut={title === cutMarker}>{children}</span>,
 	span: ({ children, title, node: _node, ...props }: ComponentProps<"span"> & ExtraProps) => title === linkLabelMarker
 		? <span className="text-primary underline underline-offset-4">{children}</span>
 		: <span title={title} {...props}>{children}</span>,
 	code: ({ children }: ComponentProps<"code"> & ExtraProps) => (
-		<code data-streamdown="inline-code" className="inline-block align-middle whitespace-pre rounded px-1.5 py-0.5 font-mono leading-none">{children}</code>
+		<code data-streamdown="inline-code" dir="ltr" className="inline-block align-middle whitespace-pre rounded px-1.5 py-0.5 font-mono leading-none">{children}</code>
 	),
 	strong: MarkdownStrong,
 };
+
+/** The teaser's one line, a span instead of a paragraph: a right-to-left
+ *  question isolates its left-to-right phrases as a Markdown paragraph does. */
+function previewLine(flow: ContentDirection) {
+	return function PreviewLine({ children, title }: ComponentProps<"p"> & ExtraProps) {
+		return <span data-preview-cut={title === cutMarker}><Flow flow={flow}>{children}</Flow></span>;
+	};
+}
 
 /** A single inert line inside the dock's expand button. No block renderers,
  * media, links, copy buttons or streaming block splitting belong in a teaser. */
@@ -105,6 +112,9 @@ export function QuestionPreview({ children }: { children: string }) {
 
 function MeasuredQuestionPreview({ source }: { source: string }) {
 	const slotRef = useRef<HTMLSpanElement>(null);
+	// The question's direction, read from its Markdown source.
+	const dir = contentDirection(source, "markdown");
+	const components = useMemo(() => ({ ...previewComponents, p: previewLine(dir ?? "ltr") }), [dir]);
 	const [fit, setFit] = useState({ cutBeforeMath: Infinity, ready: false, truncated: false });
 	const previewPlugins = useMemo(() => ({
 		cjk: {
@@ -162,11 +172,14 @@ function MeasuredQuestionPreview({ source }: { source: string }) {
 	// One compact, math-friendly line, reserved even for an empty teaser. The
 	// absolute content cannot grow the slot. Zero KaTeX leading removes only
 	// extra line-box space: its own struts retain the full, unscaled glyph height.
+	// The line takes the question's own direction, so a right-to-left question
+	// starts at the right edge and its dots end it on the left.
 	return (
 		<span
 			ref={slotRef}
 			data-question-preview
 			data-ready={fit.ready}
+			dir={dir}
 			className="relative block h-[1.6em] min-w-0 overflow-hidden"
 			style={{ visibility: fit.ready ? "visible" : "hidden" }}
 		>
@@ -174,7 +187,7 @@ function MeasuredQuestionPreview({ source }: { source: string }) {
 				<Streamdown
 					mode="static"
 					plugins={previewPlugins}
-					components={previewComponents}
+					components={components}
 					controls={false}
 					skipHtml
 					className="lh-prose w-max min-w-0 max-w-full shrink overflow-hidden whitespace-nowrap text-[length:inherit]! leading-[inherit]! [&_.katex]:inline-block [&_.katex]:max-w-full [&_.katex]:overflow-hidden [&_.katex]:align-middle [&_.katex]:leading-[0]!"

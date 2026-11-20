@@ -66,11 +66,12 @@ import {
 	SearchIcon,
 	XIcon,
 } from "lucide-react";
-import { chainsForSelection, chainSourceDirectory, folderEntryCheck, toggleSourceEntries, formatChainLine, fuzzyScore, sourceFileLabel } from "@/src/core";
+import { chainsForSelection, chainSourceDirectory, folderEntryCheck, toggleSourceEntries, formatChainLine, fuzzyScore, letterDirection, sourceFileLabel } from "@/src/core";
 import type { GraphChain, GraphNode, SourceDirectory, SourceEntry, SourceFolder, SourceEntrySelection } from "@/src/core";
 import { EditableSourceName, SourceDragRow, sourceNameMatches, SourceFolderTree, type OrganizationChange } from "./source-folder-tree";
 import { chainRow, useChainNavigation } from "./chain-navigation";
 import { useServerEvent, useServerResync } from "./server-events";
+import { BidiText } from "@/components/bidi-text";
 import { TopBar } from "@/components/top-bar";
 import { InteractionLayerOwner, useInteractionLayer } from "./interaction-layers";
 import { DeleteSourceDialog } from "@/components/delete-source-dialog";
@@ -328,6 +329,7 @@ export function ChainTableBody({
 					<input
 						ref={searchRef}
 						value={query}
+						dir={letterDirection(query)}
 						data-testid="chain-table-search"
 						onChange={(e) => onQuery(e.target.value)}
 						placeholder="Search nodes…"
@@ -441,9 +443,13 @@ export function ChainTableBody({
 									onClick={() => toggleCluster(group.key)} className={`flex h-5 w-3.5 shrink-0 items-center justify-center rounded ${empty ? "text-muted-foreground/60" : "text-muted-foreground"} transition-colors hover:bg-accent hover:text-foreground`}>
 									{open ? <BookOpenIcon className="size-3.5 shrink-0" /> : <BookIcon className="size-3.5 shrink-0" />}
 								</button>
+								{/* The label is the truncating element, so its own direction decides
+								    which end the ellipsis cuts. */}
 								{onOrganizationChange && group.birth && group.kind !== null
 									? <EditableSourceName name={group.label ?? ""} muted={empty} onSave={(name) => onOrganizationChange({ action: "rename-source", id: group.birth!, name })} />
-									: <span className={`min-w-0 flex-1 truncate text-sm font-medium${empty ? " text-muted-foreground/60" : ""}`}>{group.label ?? <span className="text-muted-foreground/60">unlabeled</span>}</span>}
+									: group.label === null
+										? <span className={`min-w-0 flex-1 truncate text-sm font-medium${empty ? " text-muted-foreground/60" : ""}`}><span className="text-muted-foreground/60">unlabeled</span></span>
+										: <BidiText className={`min-w-0 flex-1 truncate text-sm font-medium${empty ? " text-muted-foreground/60" : ""}`} text={group.label} />}
 								{group.kind === "notes" && <span className="text-[11px] uppercase tracking-widest text-muted-foreground/60">notes</span>}
 								<TreeCell widthClassName="w-14" align="right" className="text-xs tabular-nums text-muted-foreground">
 									{group.nodeIds.length}
@@ -513,12 +519,11 @@ export function ChainTableBody({
 																		className="px-1.5 text-foreground"
 																	/>
 																))}
-																<span
+																<BidiText
 																	data-testid={`prop-chip-${id}`}
 																	className="rounded border border-border/70 bg-muted/30 px-1.5 py-0.5"
-																>
-																	{nameOf(id)}
-																</span>
+																	text={nameOf(id)}
+																/>
 															</span>
 														);
 													})}

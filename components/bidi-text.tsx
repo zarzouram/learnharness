@@ -37,34 +37,57 @@ export function isolateChunks(chunks: readonly InlineChunk[]): ReactNode[] {
 	});
 }
 
-function lineContent(line: string, dir: ContentDirection | undefined): ReactNode {
-	return dir === "rtl" ? isolateChunks([{ text: line }]) : line;
+/** Plain text: a line is one text chunk. */
+const textChunks = (line: string): InlineChunk[] => [{ text: line }];
+
+/** A line's direction, read from its text chunks alone (an element such as a
+ *  file-path chip has no direction of its own), and its content: a
+ *  right-to-left line isolates its left-to-right phrases, elements included. */
+function lineOf(chunks: readonly InlineChunk[]): { dir: ContentDirection | undefined; content: ReactNode } {
+	const dir = contentDirection(chunks.filter((chunk) => !chunk.element).map((chunk) => chunk.text).join(""));
+	return { dir, content: dir === "rtl" ? isolateChunks(chunks) : chunks.map(({ text, element }) => element?.node ?? text) };
 }
 
-/** One line of a multi-line text: its own block, its own direction. An empty
- *  line keeps its height through a break, as a blank line does in `pre-wrap`. */
-function BidiLine({ line }: { line: string }) {
-	const dir = contentDirection(line);
-	return <span className="block" dir={dir}>{line === "" ? <br /> : lineContent(line, dir)}</span>;
+/** One line of a multi-line text: its own block, its own direction. The line
+ *  keeps its own break, so the element's text stays exactly as typed, every
+ *  newline and edge space included. Under `pre-wrap` a break that ends a block
+ *  opens no extra line, and a line that is only a break keeps a blank line's
+ *  height. */
+function BidiLine({ line, chunks }: { line: string; chunks: (line: string) => InlineChunk[] }) {
+	const body = line.replace(/\r?\n$/, "");
+	const { dir, content } = lineOf(chunks(body));
+	return <span className="block" dir={dir}>{content}{line.slice(body.length)}</span>;
 }
 
-type BidiTextProps<T extends ElementType> = { as?: T; text: string } & Omit<ComponentPropsWithoutRef<T>, "as" | "text" | "children" | "dir">;
+type BidiTextProps<T extends ElementType> = {
+	as?: T;
+	text: string;
+	/** The chunks of one line, for text that holds inline elements (a file-path
+	 *  chip, see `filePathChunks`); each element is placed whole. Default: the
+	 *  line is one text chunk. */
+	chunks?: (line: string) => InlineChunk[];
+	/** Keep the line breaks: one block per line, each with its own direction,
+	 *  for text shown as typed (`whitespace-pre-wrap`). Without it the text is
+	 *  one line under one direction, its whitespace collapsed to single spaces. */
+	multiline?: boolean;
+} & Omit<ComponentPropsWithoutRef<T>, "as" | "text" | "chunks" | "multiline" | "children" | "dir">;
 
-/** Plain text under its own direction. Single-line text puts `dir` on the
- *  element. Multi-line text becomes one block per line inside the element, so
- *  an Arabic line and an English line in one message each read their own way;
- *  the element keeps its own classes, so `whitespace-pre-wrap` still applies. */
-export function BidiText<T extends ElementType = "span">({ as, text: raw, ...rest }: BidiTextProps<T>) {
+/** Plain text under its own direction: `dir` on the element, the phrases
+ *  isolated inside it. A line break collapses to a space, as it would in a
+ *  one-line element (a title, an activity row), unless `multiline` keeps the
+ *  lines: then each is a block of its own with its own direction, so an Arabic
+ *  line and an English line in one message each read their own way; the
+ *  element keeps its own classes, so `whitespace-pre-wrap` still applies. */
+export function BidiText<T extends ElementType = "span">({ as, text: raw, chunks = textChunks, multiline = false, ...rest }: BidiTextProps<T>) {
 	const Tag: ElementType = as ?? "span";
 	// Persisted tool output reaches some call sites through casts, so a number
 	// or a missing field renders the way React would render it instead of throwing.
 	const text = typeof raw === "string" ? raw : String(raw ?? "");
-	if (!text.includes("\n")) {
-		const dir = contentDirection(text);
-		return <Tag {...rest} dir={dir}>{lineContent(text, dir)}</Tag>;
+	if (!multiline || !text.includes("\n")) {
+		const { dir, content } = lineOf(chunks(multiline ? text : text.replace(/\s+/g, " ")));
+		return <Tag {...rest} dir={dir}>{content}</Tag>;
 	}
-	const lines = text.split(/\r?\n/);
-	// A trailing line break ends the last line; it does not open another one.
-	if (lines.at(-1) === "") lines.pop();
-	return <Tag {...rest}>{lines.map((line, index) => <BidiLine key={index} line={line} />)}</Tag>;
+	// Split after each break, so every line carries its own (see BidiLine).
+	const lines = text.split(/(?<=\n)/);
+	return <Tag {...rest}>{lines.map((line, index) => <BidiLine key={index} line={line} chunks={chunks} />)}</Tag>;
 }

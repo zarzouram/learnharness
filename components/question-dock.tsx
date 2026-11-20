@@ -66,7 +66,7 @@ const QC_LABEL = "mb-1 text-xs font-medium uppercase tracking-wide text-muted-fo
 const QC_QUESTION = "mb-3 font-medium";
 const QC_CONTEXT = "mb-3 text-sm text-muted-foreground";
 const QC_OPTION_LIST = "flex flex-col gap-2 pb-2";
-const QC_OPTION_ROW = "flex items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm outline-none transition-colors";
+const QC_OPTION_ROW = "flex items-center gap-3 rounded-lg border px-3 py-2 text-start text-sm outline-none transition-colors";
 const QC_OPTION_MARK = "flex size-4 shrink-0 items-center justify-center border";
 const QC_OPTION_LETTER = "text-[0.625rem] font-medium leading-none";
 const QC_OTHER_INPUT = "lh-input w-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground";
@@ -338,7 +338,7 @@ export function QuestionDockBar({
 				type="button"
 				data-testid="teach-check-reveal"
 				onClick={onExpand}
-				className="dock-variant flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/40"
+				className="dock-variant flex w-full items-center gap-3 px-4 py-3 text-start transition-colors hover:bg-accent/40"
 			>
 				<span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
 					<PlayIcon className="size-3.5" />
@@ -360,7 +360,7 @@ export function QuestionDockBar({
 			type="button"
 			data-testid="question-dock-bar"
 			onClick={onExpand}
-			className="dock-variant flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-accent/40"
+			className="dock-variant flex w-full items-center gap-2.5 px-4 py-2.5 text-start text-sm transition-colors hover:bg-accent/40"
 		>
 			<span className="shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">
 				{label ??

@@ -2,6 +2,7 @@
 
 import { ChevronRightIcon, ClipboardCheckIcon } from "lucide-react";
 import { ToolContentResponse } from "@/components/ai-elements/message";
+import { BidiText } from "@/components/bidi-text";
 import { parseProbeDoneInput, type ProbeDoneResult } from "@/src/core";
 
 /**
@@ -46,7 +47,7 @@ export function ProbeDoneCard({ part }: { part: { input?: unknown; output?: unkn
 		<span className="min-w-0 truncate">Probe assessment</span>
 	</>;
 	const note = output && !output.ok ? <>
-		The prober retried: {output.error}
+		The prober retried: <BidiText text={output.error ?? ""} />
 	</> : state === "output-error" ? "The assessment was malformed — the prober retried with a corrected one."
 		: !strands ? "Writing the assessment…" : null;
 

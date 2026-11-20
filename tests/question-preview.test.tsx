@@ -84,6 +84,14 @@ describe("collapsed question inline preview", () => {
 		assert.equal(document.querySelectorAll("a, button, input, [tabindex], [href], [title], img, pre, table, .katex-display").length, 0);
 	});
 
+	it("a right-to-left question isolates its left-to-right phrases, as a Markdown paragraph does; an English one isolates nothing", () => {
+		const isolates = (source: string) => [...preview(source).querySelectorAll('[data-preview-cut] span[dir="ltr"]')].map((node) => node.textContent);
+		assert.deepEqual(isolates("ينص قانون Newton's **second law** على أن (F = ma)."), ["Newton's second law", "(F = ma)"]);
+		assert.equal(preview("ينص قانون Newton").querySelector("[data-question-preview]")?.getAttribute("dir"), "rtl");
+		assert.deepEqual(isolates("Newton's **second law** says (F = ma)."), []);
+		assert.equal(preview("`قانون` Newton").querySelector("[data-question-preview]")?.getAttribute("dir"), "ltr", "code has no direction of its own");
+	});
+
 	it("retains reference-link labels and image alt text without navigation or media", () => {
 		const document = preview("Read [**the docs**][ref] and ![an image](https://example.com/pic.png).\n\n[ref]: https://example.com");
 		assert.equal(document.querySelector("strong")?.textContent, "the docs");

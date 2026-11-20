@@ -300,8 +300,8 @@ function cutAt(element: ReactElement<ElementProps>, at: number): [ReactElement<E
  *  cells and links on their source position alone; they still take the isolated
  *  text when a streaming block turns right-to-left, because `chunksOf` goes
  *  through `Children.toArray`, which re-prefixes their keys and so remounts
- *  them. */
-function Flow({ flow, children }: { flow: ContentDirection; children: ReactNode }) {
+ *  them. The question teaser reuses it for its one line. */
+export function Flow({ flow, children }: { flow: ContentDirection; children: ReactNode }) {
 	return (
 		<FlowContext.Provider value={flow}>
 			{flow === "rtl" ? isolateChunks(chunksOf(children)) : children}

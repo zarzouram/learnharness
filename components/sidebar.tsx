@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { BidiText } from "@/components/bidi-text";
 import { MenuShell } from "@/components/menu-shell";
 import { DeleteFolderDialog, DeleteSessionDialog, folderDeleteCopy, type DeleteDialogCopy } from "@/components/delete-session-dialog";
 import type { ChatDeleteMode, ThemeMode } from "@/src/core";
@@ -17,7 +18,7 @@ import { Hint } from "@/components/ui/hint";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { buildSessionTree, flattenSessionTree, folderDeletionScope, placementOf, type FolderDeletionScope, type SessionTreeNode } from "@/src/core";
+import { buildSessionTree, contentDirection, flattenSessionTree, folderDeletionScope, letterDirection, placementOf, type FolderDeletionScope, type SessionTreeNode } from "@/src/core";
 import { useSourceDirectory } from "@/components/source-directory";
 import { NewFolderRow, SidebarFolderRow, SidebarFolderRule, SIDEBAR_COMPACT_ROW, sidebarNameFont, sidebarRail, sidebarRowBox, useOpenFolders, useSidebarDrop } from "@/components/sidebar-folders";
 import { useAppearance } from "@/components/settings/appearance";
@@ -332,7 +333,7 @@ export function SessionRow({
 			data-testid={kbdSelected ? "session-row-kbd" : "session-row"}
 			data-session-id={chat.id}
 			className={cn(
-				"relative flex w-full items-center gap-2 pr-3 text-left hover:bg-accent",
+				"relative flex w-full items-center gap-2 pr-3 text-start hover:bg-accent",
 				compact ? SIDEBAR_COMPACT_ROW : "py-2",
 				active && "bg-accent",
 				kbdSelected && !active && "bg-accent/60 ring-1 ring-inset ring-border",
@@ -341,7 +342,7 @@ export function SessionRow({
 		>
 			<SessionStatus busy={chat.busy || chat.compacting} />
 			<span className="min-w-0 flex-1">
-				<span className={cn("block truncate", sidebarNameFont(compact))}>{chat.title}</span>
+				<BidiText className={cn("block truncate", sidebarNameFont(compact))} text={chat.title} />
 				{!compact && <span className="block text-xs text-muted-foreground">{sessionMeta(chat)}</span>}
 			</span>
 			{/* The dumbbell rides the FAR RIGHT (owner round 6, 2026-10-05) —
@@ -389,6 +390,7 @@ export function RenameRow({ chat, onCommit, onCancel, depth = 0, compact = false
 					spellCheck={false}
 					onChange={(e) => setDraft(e.target.value)}
 					onBlur={() => onCommit(draft)}
+					dir={contentDirection(draft)}
 					onKeyDown={(e) => {
 						if (e.key === "Enter") e.currentTarget.blur();
 						if (e.key === "Escape") {
@@ -899,6 +901,7 @@ function SessionsSidebar() {
 						<Input
 							ref={searchRef}
 							data-testid="session-search"
+							dir={letterDirection(query)}
 							value={query}
 							onChange={(e) => {
 								setQuery(e.target.value);
