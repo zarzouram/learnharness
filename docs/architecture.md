@@ -233,6 +233,14 @@ The CSS in [`globals.css`](../app/globals.css) covers what markup cannot:
 - Mermaid output is injected unchanged, so its labels get `unicode-bidi: plaintext`. This is the one exception to the rule above: each label takes the direction of its first strong letter.
 - List indents, the quote rule and table column separators sit on logical sides. Table header cells align to the start edge.
 
+**Search folding** in [`text-search.ts`](../src/core/text-search.ts) lets a query find text that differs only in marks or letter forms. It does not depend on the direction rule.
+
+- `normalizeForSearch` folds the query and the text the same way: lowercase, NFKD, marks removed, ignorable characters and tatweel dropped, then per-script letter equivalences.
+- `SCRIPT_EQUIVALENCES` holds one table per script: Arabic alef wasla, alef maqsura and ta marbuta, and Greek final sigma. So `احمد` finds `أَحْمَدُ`, and `cafe` finds `café`.
+- `LETTER_MARKS` lists the scripts where a mark is part of the letter (kana, the Indic scripts, Thai and their kin). Those marks stay, so `バス` never finds `ハス`.
+- Stored text never changes. Session Find maps each match back to the original span through `normalizeWithMap`.
+- Fuzzy scoring, graph filtering, Session Find and the auditor's duplicate search all use it.
+
 ## Verification starting points
 
 Tests use injected engines/ports, fake transports, and renderer seams. Start with `chat-flow`, `session-core`, `turn-recovery`, `job-delivery-recovery`, `extraction`, `notes-import-route`, `practice-flow`, `prompt-overrides`, `golden-fixtures`, and `plugin-*` under `tests/`. Fixture checks establish their exercised contracts, not live account entitlements, teaching quality, or cross-process durability. Commands and runtime prerequisites belong in [Development](development.md#checks). Historical plugin verification records live in the [archive](archive/plugin-implementation-history.md), not the current runtime contract.
