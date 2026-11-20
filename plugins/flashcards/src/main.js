@@ -39,6 +39,8 @@ export function activate(ctx) {
   for (const capability of ['mountMarkdown', 'mountKnowledgePicker', 'mountTree', 'openSurface', 'openMenu']) {
     if (typeof ctx.ui?.[capability] !== 'function') throw new Error(`Flashcards requires a newer LearnHarness host with ctx.ui.${capability}. Please update LearnHarness.`);
   }
+  // Content direction and search folding come from the host; an older host gets plain text and lowercase search.
+  const text = typeof ctx.text?.show === 'function' ? ctx.text : { direction: () => undefined, show: (element, value) => { element.textContent = value; }, fold: value => value.toLocaleLowerCase() };
   let snapshot = null, refreshing = null, refreshAgain = false;
   const observers = new Set(), registrations = [];
   const publish = value => {
@@ -85,17 +87,21 @@ export function activate(ctx) {
     if (signal.aborted) return false;
     publish(value); return true;
   }
-  function field(parent, label, value, type = 'text') {
+  function field(parent, label, value, type = 'text', format = 'plain') {
     const wrapper = el('label', 'fc-field'), input = el(type === 'textarea' ? 'textarea' : 'input', 'fc-input');
     if (type !== 'textarea') input.type = type;
-    input.value = String(value ?? ''); wrapper.append(el('span', 'fc-label', label), input); parent.append(wrapper); return input;
+    // The field reads the way its value will show: Markdown fields skip code and math.
+    const direct = () => { input.dir = text.direction(input.value, { format }) ?? ''; };
+    input.value = String(value ?? ''); direct(); input.addEventListener('input', direct);
+    wrapper.append(el('span', 'fc-label', label), input); parent.append(wrapper); return input;
   }
   function dialog(title, parentSignal, build, closeLabel = 'Cancel') {
     let handle;
     handle = ctx.ui.openDialog({ title, content: (container, hostSignal) => {
       const scope = lifetime(parentSignal, hostSignal, ctx.signal), root = el('div', 'fc-root fc-dialog');
       const error = el('p', 'fc-error'); error.setAttribute('role', 'alert');
-      root.append(el('h2', 'fc-dialog-heading', title)); container.append(root);
+      const heading = el('h2', 'fc-dialog-heading'); text.show(heading, title);
+      root.append(heading); container.append(root);
       const actions = el('div', 'fc-actions');
       const run = action => async () => { try { await action(); } catch (cause) { if (!scope.signal.aborted) error.textContent = message(cause); } };
       build({ root, actions, signal: scope.signal, run, close: () => handle?.dispose() });
@@ -129,8 +135,8 @@ export function activate(ctx) {
   }
   function cueFields(root, cue = {}) {
     return {
-      question: field(root, 'Question (Markdown)', cue.question, 'textarea'),
-      answer: field(root, 'Answer (Markdown)', cue.answer, 'textarea'),
+      question: field(root, 'Question (Markdown)', cue.question, 'textarea', 'markdown'),
+      answer: field(root, 'Answer (Markdown)', cue.answer, 'textarea', 'markdown'),
     };
   }
   function createCard(deck, proposition, signal, onCreated) {
@@ -201,7 +207,8 @@ export function activate(ctx) {
       root.append(el('p', 'fc-muted', 'Memberships share the same cues, schedule, and history. Keep at least one deck.'));
       const choices = state.decks.map(deck => {
         const label = el('label', 'fc-check'), input = el('input'); input.type = 'checkbox'; input.checked = proposition.memberships.includes(deck.id);
-        label.append(input, document.createTextNode(deck.name)); root.append(label); return { id: deck.id, input };
+        const name = el('span'); text.show(name, deck.name);
+        label.append(input, name); root.append(label); return { id: deck.id, input };
       });
       button(actions, 'Save memberships', run(async () => {
         const deckIds = choices.filter(choice => choice.input.checked).map(choice => choice.id);
@@ -232,7 +239,7 @@ export function activate(ctx) {
     error.setAttribute('role', 'alert');
     const showError = text => { if (!signal.aborted) error.textContent = text; };
     const guarded = action => async () => { try { await action(); } catch (cause) { showError(message(cause)); } };
-    const review = createReviewController({ ctx, signal, button, markdown, onRated: () => { void refresh(); } });
+    const review = createReviewController({ ctx, text, signal, button, markdown, onRated: () => { void refresh(); } });
     const practice = scope => review.openPractice(buildPracticeCards(snapshot, scope));
     const pickerSlot = el('div', 'fc-picker'), fileInput = el('input'), fileStatus = el('p', 'fc-muted fc-file-status');
     const canConvertFiles = typeof ctx.documents?.toMarkdown === 'function';
@@ -255,6 +262,7 @@ export function activate(ctx) {
     deckPanel.setAttribute('aria-label', 'Decks');
     const searchLabel = el('label', 'fc-search'), search = el('input', 'fc-input');
     search.type = 'search'; search.placeholder = 'Search decks, propositions, and cues'; search.setAttribute('aria-label', 'Search flashcards'); searchLabel.append(search);
+    const directSearch = () => { search.dir = text.direction(search.value) ?? ''; };
     const batchArea = el('div'), selectionActions = el('div', 'fc-actions fc-selection-actions'), selectionCount = el('span', 'fc-muted'), treeSlot = el('div', 'fc-tree');
     const scopeActions = el('div', 'fc-actions fc-scope-actions'), selectionSummary = el('div', 'fc-selection-summary');
     selectionSummary.append(selectionCount); selectionActions.append(scopeActions, selectionSummary);
@@ -282,7 +290,7 @@ export function activate(ctx) {
     const dashboardSlot = el('div', 'fc-dashboard-slot');
     root.append(toolbar, fileStatus, error, batchArea, deckPanel, dashboardSlot); container.append(root);
     const dashboard = mountDashboard({ container: dashboardSlot, signal });
-    tree = mountLibraryTree({ ctx, container: treeSlot, signal, button,
+    tree = mountLibraryTree({ ctx, text, container: treeSlot, signal, button,
       onReview: scope => review.open(scope), onPreview: (p, cue, archive) => previewCue(p, cue, archive, signal),
       onEdit: (p, cue) => editCue(p, cue, signal), onDelete: (p, cue) => deleteCue(p, cue, signal),
       onCreateCard: deck => createCard(deck, null, signal, created => revealCreatedCard(created, deck.id)),
@@ -293,7 +301,7 @@ export function activate(ctx) {
     });
     const revealDeck = (id, propositionId) => {
       if (signal.aborted || !id) return;
-      search.value = ''; tree.update(snapshot, ''); tree.revealDeck(id, propositionId);
+      search.value = ''; directSearch(); tree.update(snapshot, ''); tree.revealDeck(id, propositionId);
     };
     const revealCreatedCard = (created, preferredDeckId) => {
       if (signal.aborted) return;
@@ -342,7 +350,7 @@ export function activate(ctx) {
       if (!activeBatch(batch) && (batch.kind === 'file' ? batch.failedChunkIds?.length : batch.failedTargetIds?.length)) button(controls, 'Retry failed…', () => batch.kind === 'file' ? retryFileGeneration(batch.id) : confirmGeneration(batch.failedTargetIds, signal, showError), bs);
       if (batch.error) button(controls, 'Retry saving', guarded(() => mutate('resume-results', {}, signal)), bs);
     }
-    search.addEventListener('input', () => { if (snapshot) tree.update(snapshot, search.value); }, { signal });
+    search.addEventListener('input', () => { directSearch(); if (snapshot) tree.update(snapshot, search.value); }, { signal });
     observe((state, loadError) => {
       if (signal.aborted) return; if (loadError) { showError(loadError); return; }
       if (state.cleanupError) { cleanupMessage = state.cleanupError; showError(cleanupMessage); }

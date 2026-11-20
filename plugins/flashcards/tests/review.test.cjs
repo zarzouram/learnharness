@@ -78,7 +78,7 @@ async function setup({ delayedMount = false } = {}) {
     return item;
   }
   const controller = createReviewController({
-    ctx, signal: view.signal,
+    ctx, signal: view.signal, text: { show(element, value) { element.textContent = value; } },
     button(parent, label, action, signal, options = {}) {
       const item = handle('button', parent, label, signal, options);
       item.node.addEventListener('click', () => { if (!signal.aborted && !item.node.disabled) void action(); });

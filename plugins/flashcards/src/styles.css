@@ -32,7 +32,7 @@
 .fc-root .fc-tree-row-content { display: flex; flex: 1; align-items: center; gap: 6px; min-width: 0; }
 .fc-root .fc-tree-icon { width: 16px; height: 16px; flex: none; color: var(--muted-foreground, #888); }
 .fc-root .fc-tree-name { display: flex; flex-direction: column; align-items: stretch; min-width: 0; }
-.fc-root .fc-tree-label { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; font: inherit; text-align: left; }
+.fc-root .fc-tree-label { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; font: inherit; text-align: start; }
 .fc-root button.fc-tree-label { cursor: pointer; background: transparent; border: 0; padding: 0; }
 .fc-root button.fc-tree-label:hover { text-decoration: underline; text-underline-offset: 3px; }
 .fc-root .fc-tree-metadata { color: var(--muted-foreground, #888); flex: none; font-size: 11px; }

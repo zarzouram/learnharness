@@ -1330,6 +1330,116 @@ test('search keeps native hierarchy and disables ordering through menu items', a
   } finally { h.dispose(); }
 });
 
+test('tree labels take their own direction through ctx.text and keep their text', async () => {
+  const h = await setup(h => {
+    h.state.decks[0].name = 'تعلم C++';
+    h.state.propositions[0].name = 'المؤشرات في C++';
+    h.state.propositions[0].cues[0].question = 'ما **المؤشر**؟';
+  });
+  try {
+    openAll(h);
+    const label = key => rowNode(h, key).querySelector('.fc-tree-label');
+    for (const [key, title] of [['deck:d1', 'تعلم C++'], ['deck:d1:p:p1', 'المؤشرات في C++'], ['deck:d1:p:p1:cue:c1', 'ما **المؤشر**؟']]) {
+      assert.equal(label(key).getAttribute('dir'), 'rtl', key); assert.equal(label(key).textContent, title, key);
+    }
+    assert.equal(label('deck:d2').getAttribute('dir'), 'ltr', 'an English deck name states ltr');
+    h.state.decks[0].name = 'Notes'; h.state.revision++; h.notify(); await flush();
+    assert.equal(label('deck:d1').getAttribute('dir'), 'ltr', 'a rename refreshes the direction');
+  } finally { h.dispose(); }
+});
+
+test('the inline rename field follows its value as it is typed and when code restores it', async () => {
+  const h = await setup(h => { h.state.decks[0].name = 'تعلم C++'; });
+  try {
+    const deck = rowNode(h, 'deck:d1'); click(h, 'تعلم C++', deck);
+    let input = deck.querySelector('input[aria-label="Deck name"]');
+    assert.equal(input.value, 'تعلم C++'); assert.equal(input.getAttribute('dir'), 'rtl', 'set when editing opens');
+    change(input, 'Learn C++'); assert.equal(input.getAttribute('dir'), 'ltr');
+    change(input, '2026'); assert.equal(input.getAttribute('dir'), '', 'letterless text inherits');
+    key(input, 'Escape'); click(h, 'تعلم C++', deck); input = deck.querySelector('input[aria-label="Deck name"]');
+    assert.equal(input.value, 'تعلم C++'); assert.equal(input.getAttribute('dir'), 'rtl', 'a value set from code fires no input event');
+  } finally { h.dispose(); }
+});
+
+test('search folds query and text through ctx.text, and the box follows its value', async () => {
+  const h = await setup(h => {
+    h.state.propositions[0].name = 'كَتَبَ الطالبُ الدرسَ';
+    Object.assign(h.state.decks[1], { sourceId: 'file-source', name: 'مُفْرَدات' });
+    h.overrides['preflight-file'] = async () => ({ existingSourceId: 'file-source', name: 'Lecture.pdf' });
+  });
+  try {
+    const search = h.app.querySelector('input[type=search]');
+    const shown = () => allRows(tree(h).props.rows).map(row => row.key);
+    change(search, 'كتب');
+    assert.equal(search.getAttribute('dir'), 'rtl');
+    assert.deepEqual(shown(), ['deck:d1', 'deck:d1:p:p1', 'deck:d1:p:p1:cue:c1'], 'an unvocalized query finds the vocalized name');
+    change(search, 'الدَّرْسُ');
+    assert.deepEqual(shown(), ['deck:d1', 'deck:d1:p:p1', 'deck:d1:p:p1:cue:c1'], 'the query is folded too');
+    change(search, 'مفردات');
+    assert.deepEqual(shown(), ['deck:d2'], 'deck names fold too');
+    change(search, 'NOTES');
+    assert.equal(search.getAttribute('dir'), 'ltr'); assert.deepEqual(shown(), ['deck:d1', 'deck:d1:p:p1', 'deck:d1:p:p1:cue:c1']);
+    change(search, 'كتب'); chooseFiles(h, [uploadedFile()]); await flush();
+    assert.equal(search.value, ''); assert.equal(search.getAttribute('dir'), '', 'clearing the box from code resets its direction');
+  } finally { h.dispose(); }
+});
+
+test('dialog fields read their value the way it will show; headings and deck names take their own direction', async () => {
+  const h = await setup(h => {
+    h.state.decks[1].name = 'مُفْرَدات C++';
+    h.state.propositions[0].name = 'حقيقة أولى';
+    h.state.propositions[0].cues[0].question = 'ما **المؤشر**؟';
+  });
+  try {
+    click(h, 'Create card', rowNode(h, 'deck:d2'));
+    let dialog = document.querySelector('[role=dialog]');
+    const [name, question, answer] = dialog.querySelectorAll('.fc-field .fc-input');
+    for (const field of [name, question, answer]) change(field, '`كود` code');
+    assert.equal(name.getAttribute('dir'), 'rtl', 'a name is plain text');
+    assert.equal(question.getAttribute('dir'), 'ltr', 'Markdown skips code'); assert.equal(answer.getAttribute('dir'), 'ltr');
+    change(answer, '$س$ جواب'); assert.equal(answer.getAttribute('dir'), 'rtl');
+    click(h, 'Cancel', dialog);
+    openAll(h); click(h, 'Edit', menu(h, 'deck:d1:p:p1:cue:c1'));
+    dialog = document.querySelector('[role=dialog]');
+    assert.equal(dialog.querySelector('textarea').getAttribute('dir'), 'rtl', 'a value set from code is directed at once');
+    assert.equal(dialog.querySelector('h2').getAttribute('dir'), 'ltr', 'the English heading states ltr');
+    click(h, 'Cancel', dialog);
+    click(h, 'ما **المؤشر**؟', rowNode(h, 'deck:d1:p:p1:cue:c1'));
+    dialog = document.querySelector('[role=dialog]');
+    assert.equal(dialog.querySelector('h2').getAttribute('dir'), 'rtl'); assert.equal(dialog.querySelector('h2').textContent, 'حقيقة أولى');
+    click(h, 'Close', dialog);
+    click(h, 'Decks…', menu(h, 'deck:d1:p:p1'));
+    dialog = document.querySelector('[role=dialog]');
+    const names = [...dialog.querySelectorAll('.fc-check span')];
+    assert.deepEqual(names.map(node => [node.textContent, node.getAttribute('dir')]), [['Notes', 'ltr'], ['مُفْرَدات C++', 'rtl']]);
+    assert.ok(names.every(node => node.previousElementSibling?.type === 'checkbox'), 'each name sits beside its checkbox');
+  } finally { h.dispose(); }
+});
+
+test('the review heading takes the proposition name\'s direction once the answer is revealed', async () => {
+  const h = await setup();
+  try {
+    h.overrides['next-review'] = async () => ({ ticket: { id: 't1', question: 'سؤال', propositionName: 'حقيقة C++' }, remaining: 1 });
+    h.overrides['reveal-review'] = async () => ({ answer: 'جواب', intervals: { 1: 60000, 2: 300000, 3: 600000, 4: 86400000 } });
+    click(h, 'Review', rowNode(h, 'deck:d1')); await flush();
+    click(h, 'Reveal answer', surfaceRoot(h)); await flush();
+    const title = surfaceRoot(h).querySelector('.fc-review-title');
+    assert.equal(title.textContent, 'حقيقة C++'); assert.equal(title.getAttribute('dir'), 'rtl'); assert.equal(title.hidden, false);
+  } finally { h.dispose(); }
+});
+
+test('an older host without ctx.text gets plain labels and lowercase search', async () => {
+  const h = await setup(h => { delete h.ctx.text; h.state.decks[0].name = 'تعلم C++'; });
+  try {
+    const label = rowNode(h, 'deck:d1').querySelector('.fc-tree-label');
+    assert.equal(label.textContent, 'تعلم C++'); assert.equal(label.hasAttribute('dir'), false);
+    const search = h.app.querySelector('input[type=search]'); change(search, 'CUSTOM');
+    assert.equal(search.getAttribute('dir'), '');
+    assert.deepEqual(allRows(tree(h).props.rows).map(row => row.key), ['deck:d2']);
+    change(search, 'تعلم'); assert.deepEqual(allRows(tree(h).props.rows).map(row => row.key), ['deck:d1', 'deck:d1:p:p1', 'deck:d1:p:p1:cue:c1']);
+  } finally { h.dispose(); }
+});
+
 test('activation reports missing public host capabilities clearly', async () => {
   const { activate } = await import(moduleUrl);
   const methods = ['mountMarkdown', 'mountKnowledgePicker', 'mountTree', 'openSurface', 'openMenu'];

@@ -18,6 +18,9 @@ colors (`variant: 'custom'` / `colors`), the surface `data-plugin-initial-focus`
 contract, and `ctx.workers`. A version string alone does not establish capabilities.
 File generation additionally requires `ctx.documents.toMarkdown`; without it, only
 Generate from file is disabled, while graph generation and existing reviews remain available.
+Names and fields take their own direction (right-to-left for Arabic), and search
+ignores marks and letter variants, through `ctx.text`; without it, names show as plain
+text and search compares lowercase text.
 
 ## Build
 

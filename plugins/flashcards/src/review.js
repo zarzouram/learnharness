@@ -38,7 +38,7 @@ function lifetime(...parents) {
   return controller;
 }
 
-export function createReviewController({ ctx, signal, button, markdown, onRated }) {
+export function createReviewController({ ctx, text, signal, button, markdown, onRated }) {
   const owner = lifetime(signal, ctx.signal);
   let active = null;
   const dispose = () => { owner.abort(); active?.close(); };
@@ -124,7 +124,7 @@ export function createReviewController({ ctx, signal, button, markdown, onRated 
         revealAction = () => {
           if (revealed || cs.aborted || index !== practiceIndex) return;
           focusOwned(); revealed = true;
-          title.textContent = cue.propositionName; title.hidden = false;
+          text.show(title, cue.propositionName); title.hidden = false;
           markdown(answer, cue.answer, cs);
           revealButton.dispose(); actions.replaceChildren();
           advanceAction = () => {
@@ -173,7 +173,7 @@ export function createReviewController({ ctx, signal, button, markdown, onRated 
               const result = await ctx.call("reveal-review", { ticketId: ticket.id });
               if (cs.aborted) return;
               revealed = true; error.textContent = "";
-              title.textContent = ticket.propositionName; title.hidden = false;
+              text.show(title, ticket.propositionName); title.hidden = false;
               markdown(answer, result.answer, cs);
               focusOwned();
               revealButton.dispose(); actions.replaceChildren();

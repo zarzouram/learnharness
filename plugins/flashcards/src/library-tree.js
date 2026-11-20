@@ -18,7 +18,7 @@ const settingsIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
 
 const plusIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
 
-export function mountLibraryTree({ ctx, container, signal, button, onReview, onPreview, onEdit, onDelete, onCreateCard, onCreateCue, onDeckSettings, onMemberships, onReorder, onRename, onSelection, onError }) {
+export function mountLibraryTree({ ctx, text, container, signal, button, onReview, onPreview, onEdit, onDelete, onCreateCard, onCreateCue, onDeckSettings, onMemberships, onReorder, onRename, onSelection, onError }) {
   const viewport = el('div', 'fc-tree-viewport');
   const inner = el('div', 'fc-tree-inner');
   const empty = el('p', 'fc-muted');
@@ -85,11 +85,12 @@ export function mountLibraryTree({ ctx, container, signal, button, onReview, onP
       if (label.tagName === 'BUTTON') label.type = 'button';
       labelSlot.append(label);
       const metadata = el('span', 'fc-tree-metadata'); root.append(metadata);
-      let draft, input, error;
+      let draft, input, error, directInput;
       if (record.kind === 'deck') {
         if (!drafts.has(record.deck.id)) drafts.set(record.deck.id, { editing: false, value: '', saving: false, error: '' });
         draft = drafts.get(record.deck.id);
         input = el('input', 'fc-tree-rename'); input.type = 'text'; input.setAttribute('aria-label', 'Deck name');
+        directInput = () => { input.dir = text.direction(input.value) ?? ''; };
         error = el('span', 'fc-tree-rename-error'); error.setAttribute('role', 'alert');
         const commit = async () => {
           if (!live() || mountSignal.aborted || !draft.editing || draft.saving) return;
@@ -101,7 +102,7 @@ export function mountLibraryTree({ ctx, container, signal, button, onReview, onP
           finally { draft.saving = false; if (!mountSignal.aborted && live()) refresh(); }
         };
         label.addEventListener('click', event => { event.stopPropagation(); draft.editing = true; draft.value = record.deck.name; draft.error = ''; refresh(); input.focus(); input.select?.(); }, { signal: mountSignal });
-        input.addEventListener('input', () => { draft.value = input.value; }, { signal: mountSignal });
+        input.addEventListener('input', () => { draft.value = input.value; directInput(); }, { signal: mountSignal });
         input.addEventListener('blur', () => { void commit(); }, { signal: mountSignal });
         input.addEventListener('keydown', event => {
           if (event.isComposing || event.keyCode === 229) return;
@@ -124,12 +125,12 @@ export function mountLibraryTree({ ctx, container, signal, button, onReview, onP
       }
       function refresh() {
         const title = record.kind === 'deck' ? record.deck.name : record.kind === 'proposition' ? record.p.name : record.kind === 'cue' ? record.cue.question.replace(/\s+/g, ' ').trim() || 'Cue' : 'Archive';
-        label.textContent = title;
+        text.show(label, title);
         label.title = record.kind === 'proposition' ? record.p.statement || title : record.kind === 'deck' ? 'Rename deck' : title;
         metadata.textContent = record.kind === 'proposition' ? `${record.p.cues.filter(c => !c.deleted).length} cues` : '';
         if (draft) {
           label.hidden = draft.editing;
-          if (draft.editing) { if (input.parentElement !== labelSlot) labelSlot.prepend(input); if (input.value !== draft.value) input.value = draft.value; }
+          if (draft.editing) { if (input.parentElement !== labelSlot) labelSlot.prepend(input); if (input.value !== draft.value) { input.value = draft.value; directInput(); } }
           else input.remove();
           input.disabled = draft.saving; error.textContent = draft.error;
         }
@@ -153,7 +154,7 @@ export function mountLibraryTree({ ctx, container, signal, button, onReview, onP
     const liveProps = state.propositions.filter(p => !p.archived), byId = new Map(liveProps.map(p => [p.id, p]));
     const allowed = new Set([...state.decks.filter(d => !d.propositionIds.some(id => byId.has(id))).map(d => `deck:${d.id}`), ...liveProps.flatMap(leaves)]);
     for (const key of selected) if (!allowed.has(key)) selected.delete(key);
-    const includes = p => !query || [p.name, p.statement, ...p.cues.filter(c => !c.deleted).flatMap(c => [c.question, c.answer])].some(text => String(text || '').toLocaleLowerCase().includes(query));
+    const includes = p => !query || [p.name, p.statement, ...p.cues.filter(c => !c.deleted).flatMap(c => [c.question, c.answer])].some(value => text.fold(String(value || '')).includes(query));
     const seen = new Set();
     function row(key, data, label, tokens, children) {
       seen.add(key);
@@ -169,7 +170,7 @@ export function mountLibraryTree({ ctx, container, signal, button, onReview, onP
     const rows = [];
     for (const deck of state.decks) {
       const all = deck.propositionIds.map(id => byId.get(id)).filter(Boolean);
-      const deckMatches = !query || deck.name.toLocaleLowerCase().includes(query);
+      const deckMatches = !query || text.fold(deck.name).includes(query);
       const matching = all.filter(p => deckMatches || includes(p));
       if (query && !deckMatches && !matching.length) continue;
       const key = `deck:${deck.id}`, tokens = all.length ? [...new Set(all.flatMap(leaves))] : [`deck:${deck.id}`];
@@ -190,7 +191,7 @@ export function mountLibraryTree({ ctx, container, signal, button, onReview, onP
   const dispose = () => { if (disposed) return; disposed = true; tree.dispose(); viewport.remove(); empty.remove(); selected.clear(); records.clear(); factories.clear(); mounted.clear(); drafts.clear(); };
   signal.addEventListener('abort', dispose, { once: true });
   return {
-    update(next, search = '') { if (!live()) return; const q = search.toLocaleLowerCase().trim(); if (q !== query) searchFolds.clear(); query = q; state = next; render(); },
+    update(next, search = '') { if (!live()) return; const q = text.fold(search).trim(); if (q !== query) searchFolds.clear(); query = q; state = next; render(); },
     selection,
     clearSelection() { if (!live()) return; selected.clear(); render(); },
     revealDeck(id, propositionId) {

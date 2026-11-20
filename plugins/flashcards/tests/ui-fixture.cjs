@@ -54,8 +54,20 @@ function fixture(document) {
     if (signal.aborted) mount.dispose();
     return mount;
   }
+  // ctx.text stand-in, defined in here so the browser fixture stays self-contained.
+  // The host owns and tests the real rule; this is just enough to see the wiring:
+  // any right-to-left letter reads rtl, Markdown skips code and math, fold drops marks.
+  const textStub = {
+    direction(value, { format } = {}) {
+      const prose = format === 'markdown' ? value.replace(/`[^`]*`|\$[^$]*\$/g, '') : value;
+      return /[\u0590-\u08ff]/.test(prose) ? 'rtl' : /\p{L}/u.test(prose) ? 'ltr' : undefined;
+    },
+    show(element, value) { const dir = textStub.direction(value); if (dir) element.setAttribute('dir', dir); else element.removeAttribute('dir'); element.textContent = value; },
+    fold: value => value.normalize('NFKD').replace(/\p{M}/gu, '').toLocaleLowerCase(),
+  };
   const ctx = {
     signal: controller.signal, manifest: { id: 'flashcards' }, cleanup(fn) { cleanups.push(fn); },
+    text: textStub,
     registerView(value) { view = value; return () => {}; },
     registerAction(value) { registrations.push(value); return () => {}; },
     placeAction(value) { registrations.push(value); return () => {}; },
