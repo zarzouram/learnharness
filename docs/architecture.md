@@ -218,20 +218,49 @@ Markdown blocks ([`md-blocks.tsx`](../components/md-blocks.tsx)) apply the rule 
 - A block states `dir="ltr"` only where it overrides a right-to-left context.
 - Inside a right-to-left block, each left-to-right phrase sits in one `<span dir="ltr">`. Bold or italic that a phrase crosses is cut at the phrase boundary. Links are never cut.
 - Code and math always carry `dir="ltr"`. They have no direction of their own, so they never count toward the block's.
+- The collapsed question teaser ([`question-preview.tsx`](../components/question-preview.tsx)) draws one line of its own. It takes the direction of the question's Markdown source and isolates its phrases through the same `Flow`.
 
-`BidiText` ([`bidi-text.tsx`](../components/bidi-text.tsx)) applies the rule to plain text read literally, where `$` and backticks are characters:
+Plain text is read literally, so `$` and backticks are characters. `directedLines` in [`bidi.ts`](../src/core/bidi.ts) plans how it is shown: its lines, their directions and the runs to isolate. Two writers show the plan:
 
-- The element itself carries `dir`, so a truncated title is cut at the correct end.
+- `BidiText` ([`bidi-text.tsx`](../components/bidi-text.tsx)) renders it in React.
+- `showText` ([`directed-text.ts`](../components/directed-text.ts)) writes the same markup into an element that no component renders, such as the source drag preview. A parity test in `tests/bidi.test.ts` holds the two to identical markup.
+
+Both show text the same way:
+
+- By default the text is one line, its whitespace collapsed. The element itself carries `dir`, so a truncated title is cut at the correct end.
+- With `multiline`, each line is a block with its own direction, for text shown as typed (`whitespace-pre-wrap`). The text stays exact: a blank line keeps its height, and a trailing break opens no extra line.
 - A right-to-left line isolates its left-to-right phrases, as a block does.
-- Text with line breaks becomes one block per line, each with its own direction.
-- New UI that shows learner or model text uses Markdown or `BidiText`, not a bare string.
+- A name set in a code font is still a name, so it uses `BidiText as="code"`.
+
+`BidiText` also takes `chunks`, which places inline elements whole. `filePathChunks` turns the file paths and tutor citations in learner text into chips. A chip never counts toward its line's direction. Its frame is always left-to-right, so its icon stays on the left inside right-to-left text.
+
+Copy built as a string has no span to hold a name, so a name inside it goes through `isolateName` ([`bidi.ts`](../src/core/bidi.ts)). A right-to-left name gets its own isolate (U+2067 and U+2069) with its left-to-right phrases isolated inside, the string twin of a `BidiText` span. So the folder Delete's "moves to “…”" keeps `تعلم C++` in order. Any other name is left as it is.
+
+Fields set `dir` from their value:
+
+- `PathInput` ([`path-input.tsx`](../components/path-input.tsx)) sets its own `dir` from the text parts of its value (`parseComposerTokens`). A chip never counts, as in the sent message. A `dir` passed by the caller wins.
+- Other fields, such as titles, names, comments and prompt overrides, use the plain rule, since their value shows as plain text.
+- Literal search boxes use `letterDirection`.
+
+New UI that shows learner or model text uses Markdown, `BidiText`, `showText` or a field `dir`, never a bare string. The **direction audit** ([`direction-audit.ts`](../tests/helpers/direction-audit.ts)) checks a mounted surface whose content is Arabic:
+
+- Right-to-left text resolves to `rtl` through its nearest `dir`.
+- A field that holds right-to-left text states `dir="rtl"`.
+- Right-to-left text holds no left-to-right run outside an isolate.
+- Code with `dir="ltr"`, keys, math and file-path chips are exempt. So is a URL the rule reads as left-to-right.
 
 The CSS in [`globals.css`](../app/globals.css) covers what markup cannot:
 
 - `:dir(rtl)` removes letter-spacing and synthetic italics from any right-to-left element. Joined Arabic letters gap under tracking, and the script has no slanted form.
 - `.katex` is isolated left-to-right, so an equation never takes its sentence's direction.
-- Mermaid output is injected unchanged, so its labels get `unicode-bidi: plaintext`. This is the one exception to the rule above: each label takes the direction of its first strong letter.
+- Mermaid output is injected unchanged, so its labels get `unicode-bidi: plaintext`.
 - List indents, the quote rule and table column separators sit on logical sides. Table header cells align to the start edge.
+
+Known gaps:
+
+- Mermaid labels take the direction of their first strong letter, not the rule above.
+- Tool-call arguments in tool cards, such as paths and search patterns, stay left-to-right on purpose.
+- Plain text that a plugin writes into its own DOM, or passes as a string to a host widget such as a tree row, is not directed yet. Plugin Markdown and plugin composers are.
 
 **Search folding** in [`text-search.ts`](../src/core/text-search.ts) lets a query find text that differs only in marks or letter forms. It does not depend on the direction rule.
 
