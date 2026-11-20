@@ -688,6 +688,15 @@ export interface PluginFrontendContext {
             notices: string[];
         }>;
     };
+    readonly text: {
+        direction(text: string, options?: {
+            format?: "plain" | "markdown";
+        }): "ltr" | "rtl" | undefined;
+        show(element: HTMLElement, text: string, options?: {
+            multiline?: boolean;
+        }): void;
+        fold(text: string): string;
+    };
     onNotification(listener: (event: PluginNotification) => void): () => void;
     onAppEvent(listener: (event: ServerEvent) => void): () => void;
     onResync(listener: () => void): () => void;
@@ -723,6 +732,10 @@ export interface PluginFrontendContext {
 - [call](#pluginfrontendcontext-call)
 - [documents](#pluginfrontendcontext-documents)
 - [documents.toMarkdown](#pluginfrontendcontext-documentstomarkdown)
+- [text](#pluginfrontendcontext-text)
+- [text.direction](#pluginfrontendcontext-textdirection)
+- [text.show](#pluginfrontendcontext-textshow)
+- [text.fold](#pluginfrontendcontext-textfold)
 - [onNotification](#pluginfrontendcontext-onnotification)
 - [onAppEvent](#pluginfrontendcontext-onappevent)
 - [onResync](#pluginfrontendcontext-onresync)
@@ -1016,6 +1029,78 @@ toMarkdown(file: File, options?: {
 | `options?` | `{             signal?: AbortSignal;         }` |
 
 **Returns:** `Promise<{             name: string;             markdown: string;             notices: string[];         }>`.
+
+### PluginFrontendContext text
+
+Content direction and search folding, the rule the host applies to learner
+and model text. Pure and synchronous: no storage, model or network work.
+
+```ts
+readonly text: {
+    direction(text: string, options?: {
+        format?: "plain" | "markdown";
+    }): "ltr" | "rtl" | undefined;
+    show(element: HTMLElement, text: string, options?: {
+        multiline?: boolean;
+    }): void;
+    fold(text: string): string;
+};
+```
+
+### PluginFrontendContext text.direction
+
+Direction read from the letters: "rtl" when the text holds any right-to-left
+letter, else "ltr" when it holds any letter, else undefined. Set it as `dir`;
+on undefined, set none. "markdown" skips balanced math and code first.
+
+```ts
+direction(text: string, options?: {
+    format?: "plain" | "markdown";
+}): "ltr" | "rtl" | undefined;
+```
+
+| Parameter | Type |
+| --- | --- |
+| `text` | `string` |
+| `options?` | `{             format?: "plain" \| "markdown";         }` |
+
+**Returns:** `"ltr" \| "rtl" \| undefined`.
+
+### PluginFrontendContext text.show
+
+Show plain text in an element the plugin owns: sets or clears its `dir` and
+replaces its children. Adds no characters, so `textContent` is the text (its
+whitespace collapsed; `multiline` keeps the lines, each with its own
+direction). Unchanged text is not rewritten. Nothing to dispose.
+
+```ts
+show(element: HTMLElement, text: string, options?: {
+    multiline?: boolean;
+}): void;
+```
+
+| Parameter | Type |
+| --- | --- |
+| `element` | `HTMLElement` |
+| `text` | `string` |
+| `options?` | `{             multiline?: boolean;         }` |
+
+**Returns:** `void`.
+
+### PluginFrontendContext text.fold
+
+Fold text for search: lowercase, marks and letter variants removed. Fold
+both sides, then compare. Never store or show the result.
+
+```ts
+fold(text: string): string;
+```
+
+| Parameter | Type |
+| --- | --- |
+| `text` | `string` |
+
+**Returns:** `string`.
 
 ### PluginFrontendContext onNotification
 

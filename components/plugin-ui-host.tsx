@@ -8,6 +8,7 @@ import { PluginComposer, PluginDictation, PluginStandardComposer } from "@/compo
 import { PluginModelPicker, PluginThinkingPicker } from "@/components/plugin-model-picker";
 import { PluginKnowledgePicker } from "@/components/plugin-knowledge-picker";
 import { PluginSettingsRows } from "@/components/plugin-settings-rows";
+import { BidiText } from "@/components/bidi-text";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PluginWorkerResultSurface } from "@/components/plugin-worker-result";
@@ -201,7 +202,7 @@ export function createPluginUiStore() {
 					variant={props.variant} colors={props.colors} size={props.size} disabled={props.disabled} title={props.title}
 					aria-label={props.iconOnly ? props.label : undefined} onClick={() => invoke(props.onClick, runtime.report)}>
 					{props.icon && <span data-slot="button-icon" aria-hidden="true" className="inline-flex shrink-0 items-center justify-center" dangerouslySetInnerHTML={{ __html: props.icon }} />}
-					{!props.iconOnly && props.label}
+					{!props.iconOnly && <BidiText text={props.label} />}
 				</Button>, undefined, false, validateButton),
 				mountBadge: (target, props, options) => mount(target, props, options, props => <StatusBadge {...props} />, undefined, false, validateBadge),
 				mountSettingsRows: (target, props, options) => mount(target, props, options, (schema, runtime) => <PluginSettingsRows schema={schema} onError={runtime.report} />),
@@ -299,12 +300,14 @@ function PluginMenu({ anchor, items, label, preferredSide = "down", closeMenu, r
 		document.addEventListener("pointerdown", pointer);
 		return () => document.removeEventListener("pointerdown", pointer);
 	});
+	// A label takes its own direction. An item is a block, not flex: a flex item
+	// would drop the space at the edge of an isolated left-to-right run.
 	return <MenuShell anchorRef={anchorRef} testid="plugin-menu" onClose={close} preferredSide={preferredSide} menuClass="flex w-56 flex-col gap-0.5 rounded-xl border bg-card p-2 text-xs shadow-xl">
-		<div ref={root} role="menu" aria-label={label}>{items.map((item) => <button type="button" role="menuitem" key={item.key} disabled={item.disabled}
-			className="flex w-full rounded-lg px-2 py-1.5 text-left text-card-foreground transition-colors hover:bg-muted disabled:opacity-40"
+		<div ref={root} role="menu" aria-label={label}>{items.map((item) => <BidiText as="button" type="button" role="menuitem" key={item.key} disabled={item.disabled}
+			className="block w-full rounded-lg px-2 py-1.5 text-start text-card-foreground transition-colors hover:bg-muted disabled:opacity-40"
 			onClick={() => {
 				try { void Promise.resolve(item.onSelect()).then(() => close()).catch(runtime.report); } catch (error) { runtime.report(error); }
-			}}>{item.label}</button>)}</div>
+			}} text={item.label} />)}</div>
 	</MenuShell>;
 }
 

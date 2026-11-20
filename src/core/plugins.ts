@@ -340,6 +340,22 @@ export interface PluginFrontendContext {
 		 * live; cancellation is cooperative, not a hard execution deadline. */
 		toMarkdown(file: File, options?: { signal?: AbortSignal }): Promise<{ name: string; markdown: string; notices: string[] }>;
 	};
+	/** Content direction and search folding, the rule the host applies to learner
+	 * and model text. Pure and synchronous: no storage, model or network work. */
+	readonly text: {
+		/** Direction read from the letters: "rtl" when the text holds any right-to-left
+		 * letter, else "ltr" when it holds any letter, else undefined. Set it as `dir`;
+		 * on undefined, set none. "markdown" skips balanced math and code first. */
+		direction(text: string, options?: { format?: "plain" | "markdown" }): "ltr" | "rtl" | undefined;
+		/** Show plain text in an element the plugin owns: sets or clears its `dir` and
+		 * replaces its children. Adds no characters, so `textContent` is the text (its
+		 * whitespace collapsed; `multiline` keeps the lines, each with its own
+		 * direction). Unchanged text is not rewritten. Nothing to dispose. */
+		show(element: HTMLElement, text: string, options?: { multiline?: boolean }): void;
+		/** Fold text for search: lowercase, marks and letter variants removed. Fold
+		 * both sides, then compare. Never store or show the result. */
+		fold(text: string): string;
+	};
 	/** Observe this plugin's live-only notifications; returns unsubscribe and expires
 	 * with activation. Re-read state on resync; no implied durable replay. */
 	onNotification(listener: (event: PluginNotification) => void): () => void;

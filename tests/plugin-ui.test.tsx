@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createPluginUiStore, PluginUiHost as Host, PluginSettingsRows } from "../components/plugin-ui-host.tsx";
 import { InteractionLayersProvider } from "../components/interaction-layers.tsx";
 import { installModalDom } from "./modal-dom.ts";
+import { assertDirected } from "./helpers/direction-audit.ts";
 function PluginUiHost(props: React.ComponentProps<typeof Host>) { return <InteractionLayersProvider><Host {...props} /></InteractionLayersProvider>; }
 import { createTranscriptDelivery, PluginComposer, PluginStandardComposer } from "../components/plugin-composer.tsx";
 import { ModelPickerPill } from "../components/model-picker-pill.tsx";
@@ -495,4 +496,73 @@ describe("controlled plugin UI", () => {
 		await assert.rejects(delivery.append(() => { throw failed; }, (error) => errors.push(error)), (error) => error === failed);
 		assert.deepEqual(errors, [failed, failed]);
 	});
+});
+
+describe("plugin strings in host widgets take their own direction", () => {
+	it("tree rows, cells, the header and column headers given as strings", () => withDom(async () => {
+		const store = createPluginUiStore(), scope = new AbortController();
+		const ui = store.createUi({ signal: scope.signal }), target = document.querySelector<HTMLElement>("#target")!;
+		const root = createRoot(document.querySelector("#root")!);
+		try {
+			await act(async () => {
+				root.render(<PluginUiHost store={store} />);
+				ui.mountTree(target, { label: "Decks", header: "الاسم", columns: [{ key: "count", header: "عدد البطاقات", width: 100 }], rows: [
+					{ key: "rtl", content: "تعلم C++", cells: { count: "٣ من C++" }, children: [{ key: "child", content: "مقدمة (Introduction)" }] },
+					{ key: "ltr", content: "Learn C++", cells: { count: "3" } },
+				] }, { signal: scope.signal });
+			});
+			assertDirected(target, "plugin tree");
+			const content = (key: string) => target.querySelector(`[data-plugin-tree-row="${key}"] > .flex-1 > span`)!;
+			assert.equal(content("rtl").getAttribute("dir"), "rtl");
+			assert.equal(content("rtl").textContent, "تعلم C++", "no characters added");
+			assert.equal(content("ltr").getAttribute("dir"), "ltr");
+			assert.equal(content("ltr").innerHTML, "Learn C++", "an English string is not split");
+			assert.equal(target.querySelector('[data-plugin-tree-cell="count"] > span')!.getAttribute("dir"), "rtl");
+			assert.equal(target.querySelector('[data-plugin-tree-column="count"] > span')!.getAttribute("dir"), "rtl");
+		} finally { await act(async () => { scope.abort(); root.unmount(); }); }
+	}));
+
+	it("button labels, with an icon-only label kept as the accessible name", () => withDom(async () => {
+		const store = createPluginUiStore(), scope = new AbortController();
+		const ui = store.createUi({ signal: scope.signal }), target = document.querySelector<HTMLElement>("#target")!;
+		const root = createRoot(document.querySelector("#root")!);
+		const icon = '<svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>';
+		try {
+			let handle!: PluginWidgetHandle<PluginButtonProps>;
+			await act(async () => {
+				root.render(<PluginUiHost store={store} />);
+				handle = ui.mountButton(target, { label: "راجع C++", onClick() {} }, { signal: scope.signal });
+			});
+			const button = target.querySelector("button")!;
+			assertDirected(target, "plugin button");
+			assert.equal(button.textContent, "راجع C++");
+			assert.equal(button.querySelector('span[dir="rtl"]')!.textContent, "راجع C++");
+			await act(async () => { handle.update({ label: "حذف المجموعة", icon, iconOnly: true }); });
+			assert.equal(button.getAttribute("aria-label"), "حذف المجموعة");
+			assert.equal(button.querySelector("[dir]"), null, "an icon-only button shows no label text");
+		} finally { await act(async () => { scope.abort(); root.unmount(); }); }
+	}));
+
+	it("menu item labels, as blocks so an isolated run keeps its spaces", () => withDom(async () => {
+		const store = createPluginUiStore(), scope = new AbortController();
+		const ui = store.createUi({ signal: scope.signal });
+		const anchor = document.createElement("button"); document.body.append(anchor);
+		const root = createRoot(document.querySelector("#root")!);
+		try {
+			await act(async () => {
+				root.render(<PluginUiHost store={store} />);
+				ui.openMenu(anchor, { label: "Deck actions", items: [{ key: "rtl", label: "انقل إلى مجموعة C++ الأولى", onSelect() {} }, { key: "ltr", label: "Move up", onSelect() {} }] }, { signal: scope.signal });
+			});
+			const menu = document.querySelector<HTMLElement>('[role="menu"]')!;
+			assertDirected(menu, "plugin menu");
+			const [rtl, ltr] = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+			assert.equal(rtl!.getAttribute("dir"), "rtl");
+			assert.equal(rtl!.textContent, "انقل إلى مجموعة C++ الأولى");
+			assert.equal(ltr!.getAttribute("dir"), "ltr");
+			for (const item of [rtl!, ltr!]) {
+				assert.ok(item.classList.contains("block") && !item.classList.contains("flex"), "a flex item would drop the space beside an isolated run");
+				assert.ok(item.classList.contains("text-start"));
+			}
+		} finally { await act(async () => { scope.abort(); root.unmount(); }); }
+	}));
 });

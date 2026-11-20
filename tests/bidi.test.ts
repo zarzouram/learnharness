@@ -451,4 +451,27 @@ describe("showText writes the markup BidiText renders", () => {
 		showText(element as unknown as HTMLElement, "تعلم  C++\nو Python");
 		assert.equal(element.textContent, "تعلم C++ و Python");
 	});
+
+	it("an unchanged call leaves the element alone; any change since the last call is written over", () => {
+		const element = document.createElement("span") as unknown as HTMLElement;
+		showText(element, "تعلم C++");
+		const run = element.querySelector('span[dir="ltr"]');
+		showText(element, "تعلم C++");
+		assert.equal(element.querySelector('span[dir="ltr"]'), run, "the same text keeps the same nodes");
+		showText(element, "تعلم C++", { multiline: true });
+		assert.notEqual(element.querySelector('span[dir="ltr"]'), run, "other options write again");
+		const touched: Array<[string, (element: HTMLElement) => void]> = [
+			["textContent", (target) => { target.textContent = "تعلم C++"; }],
+			["dir", (target) => { target.setAttribute("dir", "ltr"); }],
+			["children", (target) => { target.append(target.ownerDocument.createElement("b")); }],
+			["run text", (target) => { target.querySelector("span")!.textContent = "Java"; }],
+		];
+		for (const [name, touch] of touched) {
+			showText(element, "تعلم C++");
+			touch(element);
+			showText(element, "تعلم C++");
+			const rendered = parsed(renderToStaticMarkup(createElement(BidiText, { text: "تعلم C++" })));
+			assert.equal(canonical(element as unknown as Node), canonical(rendered), name);
+		}
+	});
 });

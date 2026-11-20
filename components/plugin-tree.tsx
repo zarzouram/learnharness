@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import type { PluginTreeContent, PluginTreeProps, PluginTreeRow, PluginUiCallback, PluginUiContent } from "@/src/core";
+import { BidiText } from "./bidi-text";
 import { TreeCell, TreeCheckbox, TreeDisclosure, TreeGuide, TreeHeader, TreeRow, TreeSelectionSpacer, TreeSeparator, treeBranchLayout } from "./tree-presentation";
 import { navigateTreeRows } from "./tree-navigation";
 import { useOptionalInteractionLayers, isInteractionElementVisible } from "./interaction-layers";
@@ -28,8 +29,9 @@ export function validatePluginTree(tree: PluginTreeProps): void {
 	visit(tree.rows);
 }
 
+/** A plugin's string may be a name (a deck, a note), so it takes its own direction. */
 function Content({ value, renderContent }: { value: PluginTreeContent; renderContent: (content: PluginUiContent) => ReactNode }) {
-	return typeof value === "string" ? value : renderContent(value);
+	return typeof value === "string" ? <BidiText text={value} /> : renderContent(value);
 }
 
 /** Native presentation and root-local row navigation; content keeps its own controls. */

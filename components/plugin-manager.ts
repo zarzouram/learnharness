@@ -4,7 +4,8 @@ import type {
 	PluginActionContext, PluginActionPlacement, PluginSettingsRegistration, PluginPageActionContext, PluginActionShortcut,
 } from "@/src/core";
 
-import { preparePluginShortcut, copyPluginSubmissionTarget, preparePluginSubmissionInterceptor, type PluginSubmissionInterceptor, type PluginSubmissionTarget } from "../src/core/index.ts";
+import { contentDirection, normalizeForSearch, preparePluginShortcut, copyPluginSubmissionTarget, preparePluginSubmissionInterceptor, type PluginSubmissionInterceptor, type PluginSubmissionTarget } from "../src/core/index.ts";
+import { showText } from "./directed-text.ts";
 import { orderSubmissionInterceptors, type SubmissionInterceptorRegistration } from "./plugin-submission-runner.ts";
 
 export type PluginMount = (container: HTMLElement, signal: AbortSignal) => ReturnType<PluginView["mount"]>;
@@ -458,6 +459,12 @@ export class PluginFrontendManager {
 						return result;
 					} catch (error) { requireCurrent(); throw error; }
 				},
+			},
+			// Stateless and pure: the host's own rule, so no activation check or signal.
+			text: {
+				direction: (text, options) => contentDirection(text, options?.format),
+				show: showText,
+				fold: normalizeForSearch,
 			},
 			onNotification: listener => listen(life.notifications, listener),
 			onAppEvent: listener => listen(life.events, listener),

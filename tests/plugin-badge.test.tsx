@@ -7,6 +7,7 @@ import { createRoot } from "react-dom/client";
 import { createPluginUiStore, PluginUiHost } from "../components/plugin-ui-host.tsx";
 import { InteractionLayersProvider } from "../components/interaction-layers.tsx";
 import { installModalDom } from "./modal-dom.ts";
+import { assertDirected } from "./helpers/direction-audit.ts";
 import type { PluginBadgeProps, PluginWidgetHandle } from "../src/core/plugin-ui.ts";
 
 const colors = ["red", "#123456", "var(--plugin-accent)", "rgb(1 2 3 / .5)", "transparent", "currentColor", "color-mix(in srgb, red 50%, blue)"];
@@ -61,6 +62,19 @@ it("mountBadge renders plugin-owned plain text through the shared native compone
 	assert.equal(badge.textContent, '<img src=x onerror="alert(1)">');
 	await act(async () => { handle.dispose(); handle.dispose(); });
 	assert.equal(f.target.textContent, "caller-owned"); assert.equal(f.store.getSnapshot().length, 0);
+}));
+
+it("mountBadge text takes its own direction: a name in Arabic reads right-to-left with its English run isolated", () => withBadge(async f => {
+	let handle!: PluginWidgetHandle<PluginBadgeProps>;
+	await act(async () => { handle = f.ui.mountBadge(f.target, { text: "مجموعة C++" }, { signal: f.widget.signal }); });
+	const badge = f.target.querySelector<HTMLElement>('[data-slot="status-badge"]')!;
+	assertDirected(f.target, "plugin badge");
+	assert.equal(badge.getAttribute("dir"), "rtl", "on the badge itself, so the right-to-left rule drops its letter-spacing");
+	assert.equal(badge.textContent, "مجموعة C++");
+	await act(async () => { handle.update({ text: "Passed" }); });
+	assert.equal(badge.getAttribute("dir"), "ltr");
+	assert.equal(badge.innerHTML, "Passed");
+	await act(async () => { handle.dispose(); });
 }));
 
 it("mountBadge accepts arbitrary text and optional native CSS colors without grading semantics", () => withBadge(async f => {
